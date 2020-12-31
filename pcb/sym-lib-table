@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name stm32l412)(type Legacy)(uri ${KIPRJMOD}/libraries/stm32l412kbt6/2020-12-31_07-15-33.lib)(options "")(descr ""))
+)
