@@ -1,3 +1,4 @@
 (sym_lib_table
   (lib (name stm32l412)(type Legacy)(uri ${KIPRJMOD}/libraries/stm32l412kbt6/2020-12-31_07-15-33.lib)(options "")(descr ""))
+  (lib (name ap2210)(type Legacy)(uri ${KIPRJMOD}/libraries/AP2210N-3.3TRG1/2021-01-01_01-02-46.lib)(options "")(descr ""))
 )

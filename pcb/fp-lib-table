@@ -1,3 +1,4 @@
 (fp_lib_table
   (lib (name stm32l412)(type KiCad)(uri ${KIPRJMOD}/libraries/stm32l412kbt6/footprints.pretty)(options "")(descr ""))
+  (lib (name ap2210)(type KiCad)(uri ${KIPRJMOD}/libraries/AP2210N-3.3TRG1/footprints.pretty)(options "")(descr ""))
 )
