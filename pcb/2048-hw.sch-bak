@@ -1914,4 +1914,42 @@ Wire Wire Line
 Wire Wire Line
 	4725 6000 4775 6000
 NoConn ~ 10450 6000
+$Comp
+L power:GND #PWR?
+U 1 1 5FF09DC1
+P 5075 6300
+F 0 "#PWR?" H 5075 6050 50  0001 C CNN
+F 1 "GND" H 5080 6127 50  0000 C CNN
+F 2 "" H 5075 6300 50  0001 C CNN
+F 3 "" H 5075 6300 50  0001 C CNN
+	1    5075 6300
+	1    0    0    -1  
+$EndComp
+Connection ~ 5075 6300
+$Comp
+L power:GND #PWR?
+U 1 1 5FF0ACB1
+P 4600 5600
+F 0 "#PWR?" H 4600 5350 50  0001 C CNN
+F 1 "GND" H 4605 5427 50  0000 C CNN
+F 2 "" H 4600 5600 50  0001 C CNN
+F 3 "" H 4600 5600 50  0001 C CNN
+	1    4600 5600
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5075 5500 4600 5500
+Wire Wire Line
+	4600 5500 4600 5600
+Connection ~ 5075 5500
+Text GLabel 10650 4900 2    50   Input ~ 0
+V_BAT
+Wire Wire Line
+	10650 4900 10500 4900
+Connection ~ 10500 4900
+Text GLabel 10650 5700 2    50   Input ~ 0
+V_BAT
+Wire Wire Line
+	10500 5700 10650 5700
+Connection ~ 10500 5700
 $EndSCHEMATC
