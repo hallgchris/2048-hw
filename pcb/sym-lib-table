@@ -1,7 +1,3 @@
 (sym_lib_table
-  (lib (name stm32l412)(type Legacy)(uri ${KIPRJMOD}/libraries/stm32l412kbt6/2020-12-31_07-15-33.lib)(options "")(descr ""))
-  (lib (name ap2210)(type Legacy)(uri ${KIPRJMOD}/libraries/AP2210N-3.3TRG1/2021-01-01_01-02-46.lib)(options "")(descr ""))
-  (lib (name psp_1000_jstk-hackpackv4)(type Legacy)(uri ${KIPRJMOD}/libraries/psp1000/psp_1000_jstk-hackpackv4.lib)(options "")(descr ""))
-  (lib (name UJC-HP-3-SMT-TR)(type Legacy)(uri ${KIPRJMOD}/libraries/CUI_UJC-HP-3-SMT-TR/UJC-HP-3-SMT-TR.lib)(options "")(descr ""))
-  (lib (name OS102011MS2QN1)(type Legacy)(uri ${KIPRJMOD}/libraries/OS102011MS2QN1/OS102011MS2QN1.lib)(options "")(descr ""))
+  (lib (name 2048-hw)(type Legacy)(uri ${KIPRJMOD}/libraries/2048-hw.lib)(options "")(descr ""))
 )

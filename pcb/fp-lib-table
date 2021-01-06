@@ -1,7 +1,3 @@
 (fp_lib_table
-  (lib (name stm32l412)(type KiCad)(uri ${KIPRJMOD}/libraries/stm32l412kbt6/footprints.pretty)(options "")(descr ""))
-  (lib (name ap2210)(type KiCad)(uri ${KIPRJMOD}/libraries/AP2210N-3.3TRG1/footprints.pretty)(options "")(descr ""))
-  (lib (name psp1000)(type KiCad)(uri ${KIPRJMOD}/libraries/psp1000)(options "")(descr ""))
-  (lib (name CUI_UJC-HP-3-SMT-TR)(type KiCad)(uri ${KIPRJMOD}/libraries/CUI_UJC-HP-3-SMT-TR)(options "")(descr ""))
-  (lib (name OS102011MS2QN1)(type KiCad)(uri ${KIPRJMOD}/libraries/OS102011MS2QN1)(options "")(descr ""))
+  (lib (name 2048-hw)(type KiCad)(uri ${KIPRJMOD}/libraries/2048-hw.pretty)(options "")(descr ""))
 )

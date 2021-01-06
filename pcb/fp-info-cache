@@ -1,4 +1,46 @@
-19052808263035791
+19054420193190415
+2048-hw
+AP2210N-3.3TRG1
+
+
+0
+3
+3
+2048-hw
+BatteryHolder_Keystone_2460_1xAA
+https://www.keyelco.com/product-pdf.cfm?p=1025
+AA battery cell holder
+0
+2
+2
+2048-hw
+CUI_UJC-HP-3-SMT-TR
+
+
+0
+10
+10
+2048-hw
+JOYSTICK-PSP1000
+<h3>PSP-1000 Thumb Slide Joystick</h3><p>This is a resistive analog joystick, very similar to those found on the PSP1000. These compact joysticks are different in that they have a very interesting ‘slide’ feeling.</p><p><a href="https://www.sparkfun.com/products/9426">Product Page</a></p>
+
+0
+4
+4
+2048-hw
+SW_OS102011MS2QN1
+
+
+0
+3
+3
+2048-hw
+XTAL_ECS-80-18-30-JGN-TR
+
+
+0
+2
+2
 Battery
 BatteryHolder_Bulgin_BX0036_1xC
 Bulgin Battery Holder, BX0036, Battery Type C (https://www.bulgin.com/products/pub/media/bulgin/data/Battery_holders.pdf)
@@ -2274,13 +2316,6 @@ speaker CUI
 0
 2
 2
-CUI_UJC-HP-3-SMT-TR
-CUI_UJC-HP-3-SMT-TR
-
-
-0
-10
-10
 Calibration_Scale
 Gauge_10mm_Type1_CopperTop
 Gauge, Massstab, 10mm, CopperTop, Type 1,
@@ -58757,13 +58792,6 @@ net tie
 0
 4
 4
-OS102011MS2QN1
-SW_OS102011MS2QN1
-
-
-0
-3
-3
 OptoDevice
 ADNS-9800
 Laser Gaming Sensor ADNS-9800
@@ -82949,24 +82977,3 @@ varistor SIOV
 0
 2
 2
-ap2210
-AP2210N-3.3TRG1
-
-
-0
-3
-3
-psp1000
-JOYSTICK-PSP1000
-<h3>PSP-1000 Thumb Slide Joystick</h3><p>This is a resistive analog joystick, very similar to those found on the PSP1000. These compact joysticks are different in that they have a very interesting ‘slide’ feeling.</p><p><a href="https://www.sparkfun.com/products/9426">Product Page</a></p>
-
-0
-4
-4
-stm32l412
-STM32L412KBT6
-
-
-0
-32
-32
