@@ -483,17 +483,6 @@ F 3 "https://www.st.com/resource/en/datasheet/lmv331.pdf" H 3100 6475 50  0001 C
 $EndComp
 $Comp
 L Comparator:LMV339 U5
-U 1 1 5FEF95A8
-P 3050 5175
-F 0 "U5" H 3050 5542 50  0000 C CNN
-F 1 "LMV339" H 3050 5451 50  0000 C CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3000 5275 50  0001 C CNN
-F 3 "https://www.st.com/resource/en/datasheet/lmv331.pdf" H 3100 5375 50  0001 C CNN
-	1    3050 5175
-	1    0    0    -1  
-$EndComp
-$Comp
-L Comparator:LMV339 U5
 U 2 1 5FF16C10
 P 3050 5725
 F 0 "U5" H 3050 6092 50  0000 C CNN
@@ -729,7 +718,7 @@ L Device:C_Small C9
 U 1 1 5FF97355
 P 9325 1250
 F 0 "C9" H 9417 1296 50  0000 L CNN
-F 1 "100n" H 9417 1205 50  0000 L CNN
+F 1 "10n" H 9417 1205 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder" H 9325 1250 50  0001 C CNN
 F 3 "~" H 9325 1250 50  0001 C CNN
 	1    9325 1250
@@ -740,7 +729,7 @@ L Device:C_Small C8
 U 1 1 5FF969DE
 P 8950 1250
 F 0 "C8" H 9042 1296 50  0000 L CNN
-F 1 "100n" H 9042 1205 50  0000 L CNN
+F 1 "1u" H 9042 1205 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder" H 8950 1250 50  0001 C CNN
 F 3 "~" H 8950 1250 50  0001 C CNN
 	1    8950 1250
@@ -773,15 +762,10 @@ NoConn ~ 10325 3625
 NoConn ~ 10325 2825
 NoConn ~ 10325 2625
 NoConn ~ 10325 2525
-NoConn ~ 9225 3925
-NoConn ~ 9225 3825
-NoConn ~ 9225 3725
 NoConn ~ 9225 3625
-Text GLabel 10325 2425 2    50   Input ~ 0
-BAT_ADC
 Text GLabel 10325 2725 2    50   Input ~ 0
 LED_STATUS
-Text GLabel 10325 3125 2    50   Input ~ 0
+Text GLabel 9225 3725 0    50   Input ~ 0
 SPI1_MOSI
 Text GLabel 9225 3525 0    50   Input ~ 0
 SWO
@@ -2260,9 +2244,9 @@ Wire Wire Line
 Connection ~ 1675 6450
 Wire Wire Line
 	1675 6450 1675 6475
-Text GLabel 9225 3325 0    50   Input ~ 0
+Text GLabel 9225 3825 0    50   Input ~ 0
 PUSH_A
-Text GLabel 9225 3425 0    50   Input ~ 0
+Text GLabel 9225 3925 0    50   Input ~ 0
 PUSH_B
 $Comp
 L power:PWR_FLAG #FLG0101
@@ -2496,4 +2480,20 @@ Wire Wire Line
 	1950 2025 1950 2125
 Connection ~ 1950 2125
 NoConn ~ 1600 3300
+NoConn ~ 10325 3125
+NoConn ~ 9225 3425
+NoConn ~ 9225 3325
+Text GLabel 10325 2425 2    50   Input ~ 0
+BAT_ADC
+$Comp
+L Comparator:LMV339 U5
+U 1 1 5FEF95A8
+P 3050 5175
+F 0 "U5" H 3050 5542 50  0000 C CNN
+F 1 "LMV339" H 3050 5451 50  0000 C CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3000 5275 50  0001 C CNN
+F 3 "https://www.st.com/resource/en/datasheet/lmv331.pdf" H 3100 5375 50  0001 C CNN
+	1    3050 5175
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
