@@ -1,4 +1,4 @@
-19054420251201415
+19056030576356415
 2048-hw
 AP2210N-3.3TRG1
 
@@ -20,6 +20,13 @@ CUI_UJC-HP-3-SMT-TR
 0
 10
 10
+2048-hw
+E_SWITCH_EG2208A
+CuK sub miniature slide switch, JS series, DPDT, right angle, http://www.ckswitches.com/media/1422/js.pdf
+switch DPDT
+0
+8
+8
 2048-hw
 JOYSTICK-PSP1000
 <h3>PSP-1000 Thumb Slide Joystick</h3><p>This is a resistive analog joystick, very similar to those found on the PSP1000. These compact joysticks are different in that they have a very interesting ‘slide’ feeling.</p><p><a href="https://www.sparkfun.com/products/9426">Product Page</a></p>
