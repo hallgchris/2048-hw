@@ -483,17 +483,6 @@ F 3 "https://www.st.com/resource/en/datasheet/lmv331.pdf" H 3100 6475 50  0001 C
 $EndComp
 $Comp
 L Comparator:LMV339 U5
-U 1 1 5FEF95A8
-P 10725 5025
-F 0 "U5" H 10725 5392 50  0000 C CNN
-F 1 "LMV339" H 10725 5301 50  0000 C CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 10675 5125 50  0001 C CNN
-F 3 "https://www.st.com/resource/en/datasheet/lmv331.pdf" H 10775 5225 50  0001 C CNN
-	1    10725 5025
-	1    0    0    -1  
-$EndComp
-$Comp
-L Comparator:LMV339 U5
 U 2 1 5FF16C10
 P 3050 5725
 F 0 "U5" H 3050 6092 50  0000 C CNN
@@ -2496,4 +2485,15 @@ NoConn ~ 9225 3425
 NoConn ~ 9225 3325
 Text GLabel 10325 2425 2    50   Input ~ 0
 BAT_ADC
+$Comp
+L Comparator:LMV339 U5
+U 1 1 5FEF95A8
+P 3050 5175
+F 0 "U5" H 3050 5542 50  0000 C CNN
+F 1 "LMV339" H 3050 5451 50  0000 C CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3000 5275 50  0001 C CNN
+F 3 "https://www.st.com/resource/en/datasheet/lmv331.pdf" H 3100 5375 50  0001 C CNN
+	1    3050 5175
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
