@@ -160,17 +160,6 @@ F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/20001984g.pdf" H 4375 1650 
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:D_Zener_Small D1
-U 1 1 5FF1E4E4
-P 3725 1575
-F 0 "D1" V 3771 1505 50  0000 R CNN
-F 1 "SMAJ5.0A" V 3680 1505 50  0000 R CNN
-F 2 "Diode_SMD:D_SMA_Handsoldering" V 3725 1575 50  0001 C CNN
-F 3 "~" V 3725 1575 50  0001 C CNN
-	1    3725 1575
-	0    -1   -1   0   
-$EndComp
-$Comp
 L Device:C_Small C1
 U 1 1 5FF1F353
 P 3375 1575
@@ -2543,5 +2532,16 @@ F 2 "MountingHole:MountingHole_2.2mm_M2" H 2525 7450 50  0001 C CNN
 F 3 "~" H 2525 7450 50  0001 C CNN
 	1    2525 7450
 	1    0    0    -1  
+$EndComp
+$Comp
+L Device:D_Zener_Small D1
+U 1 1 5FF1E4E4
+P 3725 1575
+F 0 "D1" V 3675 1750 50  0000 R CNN
+F 1 "SMAJ5.0A" V 3750 2000 50  0000 R CNN
+F 2 "Diode_SMD:D_SMA_Handsoldering" V 3725 1575 50  0001 C CNN
+F 3 "~" V 3725 1575 50  0001 C CNN
+	1    3725 1575
+	0    1    1    0   
 $EndComp
 $EndSCHEMATC
