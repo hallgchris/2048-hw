@@ -1,4 +1,4 @@
-19057641765890415
+19059252525182415
 2048-hw
 AP2210N-3.3TRG1
 
@@ -38,6 +38,13 @@ switch DPDT
 JOYSTICK-PSP1000
 <h3>PSP-1000 Thumb Slide Joystick</h3><p>This is a resistive analog joystick, very similar to those found on the PSP1000. These compact joysticks are different in that they have a very interesting ‘slide’ feeling.</p><p><a href="https://www.sparkfun.com/products/9426">Product Page</a></p>
 
+0
+4
+4
+2048-hw
+LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm_no1
+https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf
+LED RGB NeoPixel
 0
 4
 4
