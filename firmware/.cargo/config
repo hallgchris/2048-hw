@@ -31,5 +31,6 @@ rustflags = [
 
 [build]
 # Pick ONE of these compilation targets
-target = "thumbv7m-none-eabi"    # Cortex-M3: For QEMU emulation
-# target = "thumbv7em-none-eabihf" # Cortex-M4F: For STM32F303
+# target = "thumbv7m-none-eabi"       # Cortex-M3: For QEMU emulation
+# target = "thumbv7em-none-eabihf"    # Cortex-M4F: For STM32F303
+target = "x86_64-unknown-linux-gnu" # For running unit tests more easily
