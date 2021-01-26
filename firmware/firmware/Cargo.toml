@@ -6,10 +6,13 @@ name = "firmware"
 version = "0.1.0"
 
 [dependencies]
-cortex-m = "0.7.0"
-cortex-m-rt = "0.6.10"
-cortex-m-semihosting = "0.3.3"
-panic-semihosting = "0.5.6"
+cortex-m = "0.7.1"
+cortex-m-rt = "0.6.13"
+panic-halt = "0.2.0"
+
+stm32f3 = {version = "0.12.1", features = ["stm32f303", "rt"]}
+stm32f3xx-hal = {version = "0.6.1", features = ["stm32f303x8", "rt"]}
+
 mmxlviii = { path = "../mmxlviii" }
 
 # Uncomment for the panic example.
