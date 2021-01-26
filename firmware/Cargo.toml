@@ -4,3 +4,12 @@ members = [
     "firmware",
     "mmxlviii",
 ]
+
+[profile.dev]
+# Required to meet WS2812 timings
+opt-level = 2
+
+[profile.release]
+codegen-units = 1 # better optimizations
+debug = true # symbols are nice and they don't increase the size on Flash
+lto = true # better optimizations

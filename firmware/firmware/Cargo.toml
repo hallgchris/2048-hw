@@ -13,6 +13,9 @@ panic-halt = "0.2.0"
 stm32f3 = {version = "0.12.1", features = ["stm32f303", "rt"]}
 stm32f3xx-hal = {version = "0.6.1", features = ["stm32f303x8", "rt"]}
 
+smart-leds = "0.3.0"
+ws2812-spi = "0.4.0"
+
 mmxlviii = { path = "../mmxlviii" }
 
 # Uncomment for the panic example.
@@ -33,8 +36,3 @@ mmxlviii = { path = "../mmxlviii" }
 name = "firmware"
 test = false
 bench = false
-
-[profile.release]
-codegen-units = 1 # better optimizations
-debug = true # symbols are nice and they don't increase the size on Flash
-lto = true # better optimizations
