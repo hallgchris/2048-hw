@@ -6,10 +6,10 @@ use panic_halt as _;
 use cortex_m_rt::entry;
 use stm32f3xx_hal::{delay, pac, prelude::*, spi::Spi};
 
-use smart_leds::{SmartLedsWrite, RGB8};
+use smart_leds::SmartLedsWrite;
 use ws2812_spi::Ws2812;
 
-use mmxlviii::board::Board;
+use mmxlviii::{board::IntoBoard, game_board::GameBoard};
 
 #[entry]
 fn main() -> ! {
@@ -50,30 +50,24 @@ fn main() -> ! {
         .into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper);
     let mut delay = delay::Delay::new(cp.SYST, clocks);
 
-    // Confirm that our 2048 library compiles okay
-    let mut board = Board::empty();
-    for _ in 0..3 {
-        board.set_random();
-    }
+    // Create the 2048 board
+    let mut board = GameBoard::empty();
 
-    // Some sample colours to display
-    let red = RGB8 {
-        r: 0x3f,
-        g: 0x0,
-        b: 0x0,
-    };
-    let blue = RGB8 {
-        r: 0x0,
-        g: 0x0,
-        b: 0x3f,
-    };
-
+    // Each loop, add a 2 or 4 to an empty tile.
+    // If the board is full, clear it instead.
     loop {
-        status_led.toggle().unwrap();
+        if board.is_full() {
+            board.clear();
+        } else {
+            board.set_random();
+        }
+        // TODO: Figure out the typing so the below line is cleaner
+        board_leds
+            .write(board.into_board().into_iter().cloned())
+            .unwrap();
 
-        board_leds.write([red].iter().cloned()).unwrap();
+        status_led.toggle().unwrap();
         delay.delay_ms(200u16);
-        board_leds.write([blue].iter().cloned()).unwrap();
         delay.delay_ms(200u16);
     }
 }
