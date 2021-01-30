@@ -2,6 +2,14 @@ use smart_leds::RGB8;
 
 pub const SIZE: usize = 4;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
 #[derive(Clone, Copy, Debug, Eq)]
 pub struct Coord {
     x: usize,
@@ -42,6 +50,31 @@ impl Coord {
             0 | 2 => SIZE * self.y + self.x,
             1 | 3 => SIZE * (self.y + 1) - self.x - 1,
             _ => 0,
+        }
+    }
+
+    /// Get the neighbouring coordinate in a specified direction
+    pub fn neighbour(&self, direction: Direction) -> Option<Coord> {
+        // We need to check that underflow will not occur.
+        // No need to worry about components > SIZE, Coord::new() will handle this.
+        // TODO: investigate using i8 instead of usize to make this much neater.
+        match direction {
+            Direction::Up => Coord::new(self.x, self.y + 1),
+            Direction::Down => {
+                if self.y == 0 {
+                    None
+                } else {
+                    Coord::new(self.x, self.y - 1)
+                }
+            }
+            Direction::Left => {
+                if self.x == 0 {
+                    None
+                } else {
+                    Coord::new(self.x - 1, self.y)
+                }
+            }
+            Direction::Right => Coord::new(self.x + 1, self.y),
         }
     }
 }
@@ -115,6 +148,21 @@ mod tests {
         for i in 0..expected.len() {
             assert_eq!(Coord::from_index(i).unwrap().led_index(), expected[i])
         }
+    }
+
+    #[test]
+    fn test_neighbour() {
+        let coord = Coord::new(0, 0).unwrap();
+        assert_eq!(coord.neighbour(Direction::Up), Coord::new(0, 1));
+        assert_eq!(coord.neighbour(Direction::Down), None);
+        assert_eq!(coord.neighbour(Direction::Left), None);
+        assert_eq!(coord.neighbour(Direction::Right), Coord::new(1, 0));
+
+        let coord = Coord::new(3, 3).unwrap();
+        assert_eq!(coord.neighbour(Direction::Up), None);
+        assert_eq!(coord.neighbour(Direction::Down), Coord::new(3, 2));
+        assert_eq!(coord.neighbour(Direction::Left), Coord::new(2, 3));
+        assert_eq!(coord.neighbour(Direction::Right), None);
     }
 
     #[test]

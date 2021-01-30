@@ -1,3 +1,5 @@
+use core::fmt::Debug;
+
 use heapless::{consts, Vec};
 use rand::RngCore;
 use smart_leds::{
@@ -7,7 +9,14 @@ use smart_leds::{
 };
 use wyhash::WyRng;
 
-use crate::board::{Board, Coord, IntoBoard, SIZE};
+use crate::board::{Board, Coord, Direction, IntoBoard, SIZE};
+
+#[derive(Debug, PartialEq)]
+enum TileMoveResult {
+    NoMove,
+    Free(Coord),
+    Merge(Coord),
+}
 
 pub struct GameBoard {
     tiles: [u32; SIZE * SIZE],
@@ -47,9 +56,19 @@ impl GameBoard {
         self.tiles.iter().all(|&tile| tile != 0)
     }
 
+    /// Get the value of a tile on the board.
+    fn get_tile(&self, coord: Coord) -> u32 {
+        self.tiles[coord.board_index()]
+    }
+
     /// Set a tile on the board to some value.
     fn set_tile(&mut self, coord: Coord, value: u32) {
         self.tiles[coord.board_index()] = value;
+    }
+
+    /// Set a tile on the board to empty.
+    fn clear_tile(&mut self, coord: Coord) {
+        self.set_tile(coord, 0)
     }
 
     /// Get the locations of all empty tiles.
@@ -98,6 +117,80 @@ impl GameBoard {
     pub fn get_board(&self) -> [u32; SIZE * SIZE] {
         self.tiles
     }
+
+    /// Return two arrays specifying the order to attempt to move tiles.
+    fn get_traversal_order(&self, direction: Direction) -> ([usize; SIZE], [usize; SIZE]) {
+        let x_traversal_order = match direction {
+            Direction::Right => [3, 2, 1, 0],
+            _ => [0, 1, 2, 3],
+        };
+        let y_traversal_order = match direction {
+            Direction::Up => [3, 2, 1, 0],
+            _ => [0, 1, 2, 3],
+        };
+        (x_traversal_order, y_traversal_order)
+    }
+
+    /// Find the farthest position in the specified direction that the tile can move to
+    fn find_tile_move(&self, tile_coord: Coord, direction: Direction) -> TileMoveResult {
+        let mut prev = tile_coord;
+        loop {
+            match prev.neighbour(direction) {
+                None => break, // Edge of board has been reached
+                Some(next) => {
+                    if self.get_tile(next) == self.get_tile(tile_coord) {
+                        // Next tile is same as tile that we're moving, so merge
+                        return TileMoveResult::Merge(next);
+                    } else if self.get_tile(next) != 0 {
+                        // Next tile is occupied but not mergable.
+                        break;
+                    }
+                    prev = next;
+                }
+            };
+        }
+        // Prev is the furthest we can move and it's not a merge.
+        // Now check if we've moved at all.
+        if tile_coord == prev {
+            TileMoveResult::NoMove
+        } else {
+            TileMoveResult::Free(prev)
+        }
+    }
+
+    /// Moves all tiles as far as possible in the specified direction.
+    /// Returns true if any tiles were moved.
+    pub fn make_move(&mut self, direction: Direction) -> bool {
+        let (x_traversals, y_traversals) = self.get_traversal_order(direction);
+        let mut moved = false;
+
+        for &x in x_traversals.iter() {
+            for &y in y_traversals.iter() {
+                let coord = Coord::new(x, y).unwrap();
+                let value = self.get_tile(coord);
+
+                if value == 0 {
+                    continue;
+                }
+
+                match self.find_tile_move(coord, direction) {
+                    TileMoveResult::NoMove => {}
+                    TileMoveResult::Free(new_coord) => {
+                        self.set_tile(new_coord, value);
+                        self.clear_tile(coord);
+                        moved = true;
+                    }
+                    TileMoveResult::Merge(new_coord) => {
+                        self.set_tile(new_coord, value + 1);
+                        self.clear_tile(coord);
+                        moved = true;
+                    }
+                }
+            }
+        }
+
+        return moved;
+    }
 }
 
 /// Map blank tiles to be off
@@ -118,6 +211,22 @@ fn get_tile_colour(value: u32) -> RGB8 {
             val: (value as u8 - 11) * (128 / 3) + 127,
         }),
         _ => WHITE,
+    }
+}
+
+impl PartialEq for GameBoard {
+    fn eq(&self, other: &Self) -> bool {
+        self.tiles == other.tiles
+    }
+}
+
+impl Eq for GameBoard {}
+
+impl Debug for GameBoard {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("GameBoard")
+            .field("tiles", &self.tiles)
+            .finish()
     }
 }
 
@@ -174,11 +283,27 @@ mod tests {
     }
 
     #[test]
+    fn test_get_tile() {
+        let coord = Coord::new(2, 3).unwrap();
+        let mut board = GameBoard::empty();
+        board.set_tile(coord, 5);
+        assert_eq!(board.get_tile(coord), 5)
+    }
+
+    #[test]
     fn test_set_tile() {
         let coord = Coord::new(2, 3).unwrap();
         let mut board = GameBoard::empty();
         board.set_tile(coord, 5);
         assert_eq!(board.tiles[coord.board_index()], 5)
+    }
+
+    #[test]
+    fn test_clear_tile() {
+        let coord = Coord::new(2, 3).unwrap();
+        let mut board = GameBoard::full_of(1);
+        board.clear_tile(coord);
+        assert_eq!(board.tiles[coord.board_index()], 0)
     }
 
     #[test]
@@ -233,9 +358,115 @@ mod tests {
     }
 
     #[test]
+    fn test_find_tile_move() {
+        let mut board = GameBoard::empty();
+        let start_coord = Coord::new(1, 0).unwrap();
+        board.set_tile(start_coord, 1);
+        board.set_tile(Coord::new(3, 0).unwrap(), 1);
+        board.set_tile(Coord::new(0, 0).unwrap(), 2);
+
+        // Board looks like
+        // |         |
+        // |         |
+        // |         |
+        // | 2 1   1 |
+
+        assert_eq!(
+            board.find_tile_move(start_coord, Direction::Up),
+            TileMoveResult::Free(Coord::new(1, 3).unwrap())
+        );
+        assert_eq!(
+            board.find_tile_move(start_coord, Direction::Down),
+            TileMoveResult::NoMove
+        );
+        assert_eq!(
+            board.find_tile_move(start_coord, Direction::Left),
+            TileMoveResult::NoMove
+        );
+        assert_eq!(
+            board.find_tile_move(start_coord, Direction::Right),
+            TileMoveResult::Merge(Coord::new(3, 0).unwrap())
+        );
+    }
+
+    #[test]
+    fn test_make_move() {
+        let mut board = GameBoard::empty();
+        board.set_tile(Coord::new(0, 0).unwrap(), 1);
+        assert!(board.make_move(Direction::Up));
+
+        let mut expected_board = GameBoard::empty();
+        expected_board.set_tile(Coord::new(0, 3).unwrap(), 1);
+
+        assert_eq!(board, expected_board);
+
+        board.set_tile(Coord::new(2, 3).unwrap(), 1);
+        assert!(board.make_move(Direction::Right));
+
+        expected_board.clear();
+        expected_board.set_tile(Coord::new(3, 3).unwrap(), 2);
+
+        assert_eq!(board, expected_board);
+
+        assert!(!board.make_move(Direction::Right));
+
+        assert_eq!(board, expected_board);
+    }
+
+    #[test]
+    fn test_make_move_full_board() {
+        let mut board = GameBoard::full_of(1);
+
+        assert!(board.make_move(Direction::Down));
+        assert_eq!(
+            board.tiles,
+            [2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+
+        assert!(board.make_move(Direction::Up));
+        assert_eq!(
+            board.tiles,
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3]
+        );
+
+        assert!(board.make_move(Direction::Left));
+        assert_eq!(
+            board.tiles,
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0]
+        );
+
+        assert!(board.make_move(Direction::Right));
+        assert_eq!(
+            board.tiles,
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]
+        );
+
+        assert!(!board.make_move(Direction::Up));
+    }
+
+    #[test]
     fn test_get_colour() {
         for i in 0..(SIZE * SIZE) {
             get_tile_colour(i as u32);
         }
+    }
+
+    #[test]
+    fn test_eq() {
+        let coords = [
+            Coord::new(3, 1).unwrap(),
+            Coord::new(0, 2).unwrap(),
+            Coord::new(1, 0).unwrap(),
+        ];
+        let mut board1 = GameBoard::empty();
+        let mut board2 = GameBoard::empty();
+        for &coord in coords.iter() {
+            board1.set_tile(coord, 1);
+            board2.set_tile(coord, 1);
+        }
+        assert_eq!(board1, board2);
+
+        let board3 = GameBoard::empty();
+        assert_ne!(board1, board3);
     }
 }
