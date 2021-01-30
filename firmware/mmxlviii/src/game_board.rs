@@ -1,6 +1,10 @@
 use heapless::{consts, Vec};
 use rand::RngCore;
-use smart_leds::RGB8;
+use smart_leds::{
+    colors::{BLACK, WHITE},
+    hsv::{hsv2rgb, Hsv},
+    RGB8,
+};
 use wyhash::WyRng;
 
 use crate::board::{Board, Coord, IntoBoard, SIZE};
@@ -96,30 +100,34 @@ impl GameBoard {
     }
 }
 
-/// TODO: Assign colours more nicely
-const BLANK: RGB8 = RGB8 { r: 0, g: 0, b: 0 };
-const RED: RGB8 = RGB8 {
-    r: 0x3f,
-    g: 0,
-    b: 0,
-};
-const BLUE: RGB8 = RGB8 {
-    r: 0,
-    g: 0,
-    b: 0x3f,
-};
+/// Map blank tiles to be off
+/// Map 2 to 1024 tiles to rainbow colours
+/// Map 2048 to 8192 tiles to shades of white
+/// Map tiles greater than 8192 to the same white as 8192
+fn get_tile_colour(value: u32) -> RGB8 {
+    match value {
+        0 => BLACK,
+        1..=10 => hsv2rgb(Hsv {
+            hue: (value as u8 - 1) * (255 / 10),
+            sat: 0xff,
+            val: 0xbf,
+        }),
+        11..=13 => hsv2rgb(Hsv {
+            hue: 0,
+            sat: 0,
+            val: (value as u8 - 11) * (128 / 3) + 127,
+        }),
+        _ => WHITE,
+    }
+}
 
 impl IntoBoard for GameBoard {
     /// Return a board where 2s are red and 4s are blue.
     fn into_board(&self) -> Board {
         let mut board = Board::new();
         for index in 0..(SIZE * SIZE) {
-            let colour = match self.tiles[index] {
-                1 => RED,
-                2 => BLUE,
-                _ => BLANK,
-            };
             let coord = Coord::from_index(index).unwrap();
+            let colour = get_tile_colour(self.tiles[index]);
             board.set_led(coord, colour);
         }
         board
@@ -222,5 +230,12 @@ mod tests {
         let mut board = GameBoard::empty();
         board.set_random();
         assert!(board.max_tile() != 0)
+    }
+
+    #[test]
+    fn test_get_colour() {
+        for i in 0..(SIZE * SIZE) {
+            get_tile_colour(i as u32);
+        }
     }
 }

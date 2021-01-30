@@ -6,7 +6,7 @@ use panic_halt as _;
 use cortex_m_rt::entry;
 use stm32f3xx_hal::{delay, pac, prelude::*, spi::Spi};
 
-use smart_leds::SmartLedsWrite;
+use smart_leds::{brightness, gamma, SmartLedsWrite};
 use ws2812_spi::Ws2812;
 
 use mmxlviii::{board::IntoBoard, game_board::GameBoard};
@@ -24,8 +24,8 @@ fn main() -> ! {
 
     let clocks = rcc
         .cfgr
-        .sysclk(24.mhz())
-        .pclk1(12.mhz())
+        .sysclk(48.mhz())
+        .pclk1(24.mhz())
         .freeze(&mut flash.acr);
 
     // Set up SPI for WS2812b LEDs
@@ -53,6 +53,8 @@ fn main() -> ! {
     // Create the 2048 board
     let mut board = GameBoard::empty();
 
+    let brightness_level = 127;
+
     // Each loop, add a 2 or 4 to an empty tile.
     // If the board is full, clear it instead.
     loop {
@@ -61,13 +63,17 @@ fn main() -> ! {
         } else {
             board.set_random();
         }
+        let leds = board.into_board();
+
         // TODO: Figure out the typing so the below line is cleaner
         board_leds
-            .write(board.into_board().into_iter().cloned())
+            .write(brightness(
+                gamma(leds.into_iter().cloned()),
+                brightness_level,
+            ))
             .unwrap();
 
         status_led.toggle().unwrap();
-        delay.delay_ms(200u16);
         delay.delay_ms(200u16);
     }
 }
