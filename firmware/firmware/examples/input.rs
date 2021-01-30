@@ -8,6 +8,7 @@ use stm32f3xx_hal::{
     delay,
     gpio::{
         gpioa::{PA10, PA11, PA8, PA9},
+        gpiob::{PB6, PB7},
         Input, PullUp,
     },
     pac,
@@ -16,7 +17,7 @@ use stm32f3xx_hal::{
 };
 
 use smart_leds::{
-    colors::{BLUE, GREEN, RED, YELLOW},
+    colors::{BLACK, BLUE, GREEN, RED, WHITE, YELLOW},
     SmartLedsWrite,
 };
 use ws2812_spi::Ws2812;
@@ -28,12 +29,16 @@ struct JoystickDemoBoard {
     down_pin: PA10<Input<PullUp>>,
     left_pin: PA8<Input<PullUp>>,
     right_pin: PA9<Input<PullUp>>,
+
+    a_pin: PB6<Input<PullUp>>,
+    b_pin: PB7<Input<PullUp>>,
 }
 
 impl IntoBoard for JoystickDemoBoard {
     fn into_board(&self) -> Board {
-        // TODO: Use interrupts instead of polling
         let mut board = Board::new();
+
+        // TODO: Use interrupts instead of polling
         if self.up_pin.is_high().unwrap() {
             (0..SIZE).for_each(|x| board.set_led(Coord::new(x, SIZE - 1).unwrap(), RED));
         } else if self.down_pin.is_high().unwrap() {
@@ -43,6 +48,19 @@ impl IntoBoard for JoystickDemoBoard {
         } else if self.right_pin.is_high().unwrap() {
             (0..SIZE).for_each(|y| board.set_led(Coord::new(SIZE - 1, y).unwrap(), BLUE));
         }
+
+        let a_colour = match self.a_pin.is_low().unwrap() {
+            true => WHITE,
+            false => BLACK,
+        };
+        let b_colour = match self.b_pin.is_low().unwrap() {
+            true => WHITE,
+            false => BLACK,
+        };
+
+        board.set_led(Coord::new(1, 2).unwrap(), a_colour);
+        board.set_led(Coord::new(2, 1).unwrap(), b_colour);
+
         return board;
     }
 }
@@ -100,6 +118,12 @@ fn main() -> ! {
         up_pin: gpioa
             .pa11
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr),
+        a_pin: gpiob
+            .pb6
+            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr),
+        b_pin: gpiob
+            .pb7
+            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr),
     };
 
     loop {
