@@ -9,7 +9,10 @@ use stm32f3xx_hal::{delay, pac, prelude::*, spi::Spi};
 use smart_leds::{brightness, gamma, SmartLedsWrite};
 use ws2812_spi::Ws2812;
 
-use mmxlviii::{board::IntoBoard, game_board::GameBoard};
+use mmxlviii::{
+    board::{Direction, IntoBoard},
+    game_board::GameBoard,
+};
 
 #[entry]
 fn main() -> ! {
@@ -50,19 +53,49 @@ fn main() -> ! {
         .into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper);
     let mut delay = delay::Delay::new(cp.SYST, clocks);
 
+    let up_pin = gpioa
+        .pa11
+        .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
+    let down_pin = gpioa
+        .pa10
+        .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
+    let left_pin = gpioa
+        .pa8
+        .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
+    let right_pin = gpioa
+        .pa9
+        .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
+
     // Create the 2048 board
     let mut board = GameBoard::empty();
+    board.set_random();
 
     let brightness_level = 127;
 
-    // Each loop, add a 2 or 4 to an empty tile.
-    // If the board is full, clear it instead.
+    let mut debouncer = false;
+
     loop {
-        if board.is_full() {
-            board.clear();
-        } else {
-            board.set_random();
+        let mut direction: Option<Direction> = None;
+        if up_pin.is_high().unwrap() {
+            direction = Some(Direction::Up);
+        } else if down_pin.is_high().unwrap() {
+            direction = Some(Direction::Down);
+        } else if left_pin.is_high().unwrap() {
+            direction = Some(Direction::Left);
+        } else if right_pin.is_high().unwrap() {
+            direction = Some(Direction::Right);
         }
+
+        debouncer = match direction {
+            Some(chosen_direction) => {
+                if !debouncer && board.make_move(chosen_direction) {
+                    board.set_random();
+                }
+                true
+            }
+            None => false,
+        };
+
         let leds = board.into_board();
 
         // TODO: Figure out the typing so the below line is cleaner
@@ -74,6 +107,6 @@ fn main() -> ! {
             .unwrap();
 
         status_led.toggle().unwrap();
-        delay.delay_ms(200u16);
+        delay.delay_ms(10u16);
     }
 }
