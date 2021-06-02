@@ -576,9 +576,9 @@ Text GLabel 10600 3250 2    50   Input ~ 0
 Y_MAX
 Text GLabel 10600 3150 2    50   Input ~ 0
 Y_MIN
-Text GLabel 9500 3350 0    50   Input ~ 0
-X_MAX
 Text GLabel 9500 3250 0    50   Input ~ 0
+X_MAX
+Text GLabel 9500 3350 0    50   Input ~ 0
 X_MIN
 Wire Wire Line
 	8550 1100 8675 1100
@@ -665,7 +665,7 @@ F 3 "~" H 8775 1100 50  0001 C CNN
 	1    8775 1100
 	0    -1   -1   0   
 $EndComp
-NoConn ~ 10600 3550
+NoConn ~ 10600 3350
 NoConn ~ 10600 2750
 NoConn ~ 10600 2550
 NoConn ~ 10600 2450
@@ -2135,7 +2135,7 @@ Wire Wire Line
 Connection ~ 1625 6225
 Wire Wire Line
 	1625 6225 1625 6250
-Text GLabel 10600 3350 2    50   Input ~ 0
+Text GLabel 10600 3550 2    50   Input ~ 0
 PUSH_A
 Text GLabel 10600 3450 2    50   Input ~ 0
 PUSH_B
