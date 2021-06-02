@@ -419,9 +419,9 @@ Wire Wire Line
 Connection ~ 2625 5225
 Wire Wire Line
 	2625 5225 2625 5050
-Text GLabel 3400 4950 2    50   Input ~ 0
-X_MIN
 Text GLabel 3400 5500 2    50   Input ~ 0
+X_MIN
+Text GLabel 3400 4950 2    50   Input ~ 0
 X_MAX
 Text GLabel 2550 5950 0    50   Input ~ 0
 14_REF
@@ -444,9 +444,9 @@ Wire Wire Line
 Connection ~ 2625 6325
 Wire Wire Line
 	2625 6325 2625 6150
-Text GLabel 3400 6050 2    50   Input ~ 0
-Y_MIN
 Text GLabel 3400 6600 2    50   Input ~ 0
+Y_MIN
+Text GLabel 3400 6050 2    50   Input ~ 0
 Y_MAX
 $Comp
 L Comparator:LMV339 U5
@@ -572,9 +572,9 @@ F 3 "" H 7850 2025 50  0001 C CNN
 	1    7850 2025
 	1    0    0    -1  
 $EndComp
-Text GLabel 10600 3250 2    50   Input ~ 0
-Y_MAX
 Text GLabel 10600 3150 2    50   Input ~ 0
+Y_MAX
+Text GLabel 10600 3250 2    50   Input ~ 0
 Y_MIN
 Text GLabel 9500 3250 0    50   Input ~ 0
 X_MAX
@@ -1959,78 +1959,6 @@ F 3 "~" H 4750 4700 50  0001 C CNN
 $EndComp
 Connection ~ 4550 4700
 $Comp
-L Connector:TestPoint TP5
-U 1 1 6005ECF4
-P 3350 4850
-F 0 "TP5" H 3408 4968 50  0000 L CNN
-F 1 "X_MIN" H 3408 4877 50  0000 L CNN
-F 2 "TestPoint:TestPoint_THTPad_D1.5mm_Drill0.7mm" H 3550 4850 50  0001 C CNN
-F 3 "~" H 3550 4850 50  0001 C CNN
-	1    3350 4850
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	3300 4950 3350 4950
-Wire Wire Line
-	3350 4850 3350 4950
-Connection ~ 3350 4950
-Wire Wire Line
-	3350 4950 3400 4950
-$Comp
-L Connector:TestPoint TP6
-U 1 1 600A230E
-P 3350 5400
-F 0 "TP6" H 3408 5518 50  0000 L CNN
-F 1 "X_MAX" H 3408 5427 50  0000 L CNN
-F 2 "TestPoint:TestPoint_THTPad_D1.5mm_Drill0.7mm" H 3550 5400 50  0001 C CNN
-F 3 "~" H 3550 5400 50  0001 C CNN
-	1    3350 5400
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	3300 5500 3350 5500
-Wire Wire Line
-	3350 5400 3350 5500
-Connection ~ 3350 5500
-Wire Wire Line
-	3350 5500 3400 5500
-$Comp
-L Connector:TestPoint TP7
-U 1 1 600B8995
-P 3350 5950
-F 0 "TP7" H 3408 6068 50  0000 L CNN
-F 1 "Y_MIN" H 3408 5977 50  0000 L CNN
-F 2 "TestPoint:TestPoint_THTPad_D1.5mm_Drill0.7mm" H 3550 5950 50  0001 C CNN
-F 3 "~" H 3550 5950 50  0001 C CNN
-	1    3350 5950
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	3300 6050 3350 6050
-Wire Wire Line
-	3350 5950 3350 6050
-Connection ~ 3350 6050
-Wire Wire Line
-	3350 6050 3400 6050
-$Comp
-L Connector:TestPoint TP8
-U 1 1 600CFA8D
-P 3350 6500
-F 0 "TP8" H 3408 6618 50  0000 L CNN
-F 1 "Y_MAX" H 3408 6527 50  0000 L CNN
-F 2 "TestPoint:TestPoint_THTPad_D1.5mm_Drill0.7mm" H 3550 6500 50  0001 C CNN
-F 3 "~" H 3550 6500 50  0001 C CNN
-	1    3350 6500
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	3300 6600 3350 6600
-Wire Wire Line
-	3350 6500 3350 6600
-Connection ~ 3350 6600
-Wire Wire Line
-	3350 6600 3400 6600
-$Comp
 L Connector:TestPoint TP9
 U 1 1 600E72D7
 P 5050 6850
@@ -2384,7 +2312,7 @@ U 1 1 6017B77B
 P 1375 7425
 F 0 "H1" H 1475 7471 50  0000 L CNN
 F 1 "MountingHole" H 1475 7380 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.2mm_M2" H 1375 7425 50  0001 C CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 1375 7425 50  0001 C CNN
 F 3 "~" H 1375 7425 50  0001 C CNN
 	1    1375 7425
 	1    0    0    -1  
@@ -2395,7 +2323,7 @@ U 1 1 6017C229
 P 1375 7625
 F 0 "H2" H 1475 7671 50  0000 L CNN
 F 1 "MountingHole" H 1475 7580 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.2mm_M2" H 1375 7625 50  0001 C CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 1375 7625 50  0001 C CNN
 F 3 "~" H 1375 7625 50  0001 C CNN
 	1    1375 7625
 	1    0    0    -1  
@@ -2406,7 +2334,7 @@ U 1 1 6017C63F
 P 2525 7625
 F 0 "H4" H 2625 7671 50  0000 L CNN
 F 1 "MountingHole" H 2625 7580 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.2mm_M2" H 2525 7625 50  0001 C CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 2525 7625 50  0001 C CNN
 F 3 "~" H 2525 7625 50  0001 C CNN
 	1    2525 7625
 	1    0    0    -1  
@@ -2417,7 +2345,7 @@ U 1 1 6017CAF3
 P 2525 7450
 F 0 "H3" H 2625 7496 50  0000 L CNN
 F 1 "MountingHole" H 2625 7405 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.2mm_M2" H 2525 7450 50  0001 C CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3" H 2525 7450 50  0001 C CNN
 F 3 "~" H 2525 7450 50  0001 C CNN
 	1    2525 7450
 	1    0    0    -1  
@@ -2571,4 +2499,12 @@ EEPROM_WP
 NoConn ~ 10600 3850
 Text GLabel 9500 3850 0    50   Input ~ 0
 I2C_SDA
+Wire Wire Line
+	3300 4950 3400 4950
+Wire Wire Line
+	3300 5500 3400 5500
+Wire Wire Line
+	3300 6050 3400 6050
+Wire Wire Line
+	3300 6600 3400 6600
 $EndSCHEMATC
