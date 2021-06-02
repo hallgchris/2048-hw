@@ -580,87 +580,6 @@ Text GLabel 10325 3325 2    50   Input ~ 0
 X_MAX
 Text GLabel 10325 3225 2    50   Input ~ 0
 X_MIN
-Text Notes 7075 3150 0    50   ~ 0
-Cload = 2 * (CL - Cstray)
-Wire Wire Line
-	7250 1850 7850 1850
-Connection ~ 7525 2800
-Wire Wire Line
-	7775 2800 7525 2800
-Connection ~ 7250 2350
-Wire Wire Line
-	7250 1850 7250 2350
-Wire Wire Line
-	7775 1975 7775 2050
-Wire Wire Line
-	7850 1975 7775 1975
-Text GLabel 7850 1975 2    50   Input ~ 0
-HSE_OUT
-Text GLabel 7850 1850 2    50   Input ~ 0
-HSE_IN
-Connection ~ 7775 2350
-Wire Wire Line
-	7775 2350 7775 2250
-$Comp
-L Device:R_Small R12
-U 1 1 5FFB6F1D
-P 7775 2150
-F 0 "R12" H 7625 2125 50  0000 C CNN
-F 1 "0" H 7675 2200 50  0000 C CNN
-F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" H 7775 2150 50  0001 C CNN
-F 3 "~" H 7775 2150 50  0001 C CNN
-	1    7775 2150
-	-1   0    0    1   
-$EndComp
-Wire Wire Line
-	7525 2850 7525 2800
-$Comp
-L power:GND #PWR012
-U 1 1 5FFB4828
-P 7525 2850
-F 0 "#PWR012" H 7525 2600 50  0001 C CNN
-F 1 "GND" H 7530 2677 50  0000 C CNN
-F 2 "" H 7525 2850 50  0001 C CNN
-F 3 "" H 7525 2850 50  0001 C CNN
-	1    7525 2850
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	7775 2800 7775 2675
-Wire Wire Line
-	7250 2800 7525 2800
-Wire Wire Line
-	7250 2675 7250 2800
-Wire Wire Line
-	7250 2350 7375 2350
-Wire Wire Line
-	7250 2475 7250 2350
-Wire Wire Line
-	7775 2350 7675 2350
-Wire Wire Line
-	7775 2475 7775 2350
-$Comp
-L Device:C_Small C11
-U 1 1 5FFAB48B
-P 7775 2575
-F 0 "C11" H 7867 2621 50  0000 L CNN
-F 1 "12p" H 7867 2530 50  0000 L CNN
-F 2 "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder" H 7775 2575 50  0001 C CNN
-F 3 "~" H 7775 2575 50  0001 C CNN
-	1    7775 2575
-	1    0    0    -1  
-$EndComp
-$Comp
-L Device:C_Small C10
-U 1 1 5FFAAB69
-P 7250 2575
-F 0 "C10" H 7342 2621 50  0000 L CNN
-F 1 "12p" H 7342 2530 50  0000 L CNN
-F 2 "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder" H 7250 2575 50  0001 C CNN
-F 3 "~" H 7250 2575 50  0001 C CNN
-	1    7250 2575
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	8550 1100 8675 1100
 Connection ~ 9325 1100
@@ -762,10 +681,6 @@ Text GLabel 10325 3825 2    50   Input ~ 0
 SWCLK
 Text GLabel 10325 3725 2    50   Input ~ 0
 SWDIO
-Text GLabel 9225 3125 0    50   Input ~ 0
-HSE_OUT
-Text GLabel 9225 3025 0    50   Input ~ 0
-HSE_IN
 Text GLabel 9225 2425 0    50   Input ~ 0
 NRST
 $Comp
@@ -2445,17 +2360,6 @@ F 3 "" H 2575 3275 60  0000 C CNN
 	1    2575 3275
 	1    0    0    -1  
 $EndComp
-$Comp
-L Device:Crystal Y1
-U 1 1 5FFA9BCF
-P 7525 2350
-F 0 "Y1" H 7525 2618 50  0000 C CNN
-F 1 " ECS-80-12-30Q-DS-TR" H 7425 2525 50  0000 C CNN
-F 2 "2048-hw:XTAL_ECS-80-18-30-JGN-TR" H 7525 2350 50  0001 C CNN
-F 3 "~" H 7525 2350 50  0001 C CNN
-	1    7525 2350
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	1400 2425 1300 2425
 Connection ~ 1400 2425
@@ -2544,4 +2448,6 @@ F 3 "~" V 3725 1575 50  0001 C CNN
 	1    3725 1575
 	0    1    1    0   
 $EndComp
+NoConn ~ 9225 3025
+NoConn ~ 9225 3125
 $EndSCHEMATC
