@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - Add AT24C08D EEPROM memory for storing game state, etc.
+- Charging IC is bypassed when the board is running and simultaneously
 
 ### Changed
 
