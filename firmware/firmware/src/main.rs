@@ -12,6 +12,7 @@ use ws2812_spi::Ws2812;
 use mmxlviii::{
     board::{Direction, IntoBoard},
     game_board::GameBoard,
+    score_board::ScoreBoard,
 };
 
 #[entry]
@@ -66,6 +67,10 @@ fn main() -> ! {
         .pa9
         .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
 
+    let a_pin = gpiob
+        .pb6
+        .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr);
+
     // Create the 2048 board
     let mut board = GameBoard::empty();
     board.set_random();
@@ -96,7 +101,10 @@ fn main() -> ! {
             None => false,
         };
 
-        let leds = board.into_board();
+        let leds = match a_pin.is_low() {
+            Ok(true) => ScoreBoard::from_score(board.get_score()).into_board(),
+            Ok(false) | Err(_) => board.into_board(),
+        };
 
         // TODO: Figure out the typing so the below line is cleaner
         board_leds

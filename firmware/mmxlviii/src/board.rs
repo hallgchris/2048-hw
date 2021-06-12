@@ -85,6 +85,7 @@ impl PartialEq for Coord {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Board {
     leds: [RGB8; SIZE * SIZE],
 }

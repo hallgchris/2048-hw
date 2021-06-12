@@ -21,6 +21,7 @@ enum TileMoveResult {
 pub struct GameBoard {
     tiles: [u32; SIZE * SIZE],
     rng: WyRng,
+    score: u32,
 }
 
 impl GameBoard {
@@ -34,12 +35,14 @@ impl GameBoard {
         GameBoard {
             tiles: [value; SIZE * SIZE],
             rng: WyRng::default(),
+            score: 0,
         }
     }
 
     /// Clears all tiles from the board.
     pub fn clear(&mut self) {
         self.tiles = [0; SIZE * SIZE];
+        self.score = 0;
     }
 
     /// Get the maximum value of any tile on the board.
@@ -69,6 +72,11 @@ impl GameBoard {
     /// Set a tile on the board to empty.
     fn clear_tile(&mut self, coord: Coord) {
         self.set_tile(coord, 0)
+    }
+
+    /// Get the game's score.
+    pub fn get_score(&self) -> u32 {
+        self.score
     }
 
     /// Get the locations of all empty tiles.
@@ -183,6 +191,7 @@ impl GameBoard {
                     TileMoveResult::Merge(new_coord) => {
                         self.set_tile(new_coord, value + 1);
                         self.clear_tile(coord);
+                        self.score += u32::pow(2, value + 1);
                         moved = true;
                     }
                 }
@@ -216,7 +225,7 @@ fn get_tile_colour(value: u32) -> RGB8 {
 
 impl PartialEq for GameBoard {
     fn eq(&self, other: &Self) -> bool {
-        self.tiles == other.tiles
+        self.tiles == other.tiles && self.score == other.score
     }
 }
 
@@ -226,6 +235,7 @@ impl Debug for GameBoard {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("GameBoard")
             .field("tiles", &self.tiles)
+            .field("score", &self.score)
             .finish()
     }
 }
@@ -257,14 +267,17 @@ mod tests {
     #[test]
     fn test_empty_instantiation() {
         let board = GameBoard::empty();
-        assert!(board.tiles.iter().all(|&tile| tile == 0))
+        assert!(board.tiles.iter().all(|&tile| tile == 0));
+        assert_eq!(board.get_score(), 0);
     }
 
     #[test]
     fn test_clear() {
         let mut board = GameBoard::full_of(1);
+        board.score = 100;
         board.clear();
         assert!(board.tiles.iter().all(|&tile| tile == 0));
+        assert_eq!(board.get_score(), 0);
     }
 
     #[test]
@@ -304,6 +317,12 @@ mod tests {
         let mut board = GameBoard::full_of(1);
         board.clear_tile(coord);
         assert_eq!(board.tiles[coord.board_index()], 0)
+    }
+
+    #[test]
+    fn test_get_score() {
+        let board = GameBoard::empty();
+        assert_eq!(board.get_score(), 0);
     }
 
     #[test]
@@ -405,6 +424,7 @@ mod tests {
 
         expected_board.clear();
         expected_board.set_tile(Coord::new(3, 3).unwrap(), 2);
+        expected_board.score = 4;
 
         assert_eq!(board, expected_board);
 
@@ -422,26 +442,35 @@ mod tests {
             board.tiles,
             [2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0]
         );
+        assert_eq!(board.score, 32);
 
         assert!(board.make_move(Direction::Up));
         assert_eq!(
             board.tiles,
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3]
         );
+        assert_eq!(board.score, 64);
 
         assert!(board.make_move(Direction::Left));
         assert_eq!(
             board.tiles,
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0]
         );
+        assert_eq!(board.score, 96);
 
         assert!(board.make_move(Direction::Right));
         assert_eq!(
             board.tiles,
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]
         );
+        assert_eq!(board.score, 128);
 
         assert!(!board.make_move(Direction::Up));
+        assert_eq!(
+            board.tiles,
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5]
+        );
+        assert_eq!(board.score, 128);
     }
 
     #[test]
@@ -465,6 +494,8 @@ mod tests {
             board2.set_tile(coord, 1);
         }
         assert_eq!(board1, board2);
+        board2.score = 100;
+        assert_ne!(board1, board2);
 
         let board3 = GameBoard::empty();
         assert_ne!(board1, board3);

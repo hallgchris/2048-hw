@@ -2,6 +2,7 @@
 
 pub mod board;
 pub mod game_board;
+pub mod score_board;
 
 pub fn add_one(n: i32) -> i32 {
     n + 1
