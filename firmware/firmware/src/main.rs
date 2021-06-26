@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+use core::convert::TryInto;
+
 use panic_halt as _;
 
 use cortex_m_rt::entry;
@@ -28,21 +30,27 @@ fn main() -> ! {
 
     let clocks = rcc
         .cfgr
-        .sysclk(48.mhz())
-        .pclk1(24.mhz())
+        .sysclk(48.MHz())
+        .pclk1(24.MHz())
         .freeze(&mut flash.acr);
 
     // Set up SPI for WS2812b LEDs
     let (sck, miso, mosi) = (
-        gpioa.pa5.into_af5(&mut gpioa.moder, &mut gpioa.afrl),
-        gpioa.pa6.into_af5(&mut gpioa.moder, &mut gpioa.afrl),
-        gpiob.pb5.into_af5(&mut gpiob.moder, &mut gpiob.afrl),
+        gpioa
+            .pa5
+            .into_af5_push_pull(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrl),
+        gpioa
+            .pa6
+            .into_af5_push_pull(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrl),
+        gpiob
+            .pb5
+            .into_af5_push_pull(&mut gpiob.moder, &mut gpiob.otyper, &mut gpiob.afrl),
     );
     let spi = Spi::spi1(
         dp.SPI1,
         (sck, miso, mosi),
         ws2812_spi::MODE,
-        3.mhz(),
+        3.MHz().try_into().unwrap(),
         clocks,
         &mut rcc.apb2,
     );
