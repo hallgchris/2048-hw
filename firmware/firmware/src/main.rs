@@ -5,9 +5,9 @@ use core::convert::TryInto;
 
 use panic_halt as _;
 
+use rtic::cyccnt::{Instant, U32Ext};
 use stm32f3::stm32f303::{Peripherals, SPI1};
 use stm32f3xx_hal::{
-    delay,
     gpio::{gpioa, gpiob, Alternate, Edge, Input, Output, PushPull},
     prelude::*,
     spi::Spi,
@@ -22,7 +22,16 @@ use mmxlviii::{
     score_board::ScoreBoard,
 };
 
-#[rtic::app(device = stm32f3xx_hal::pac, peripherals = true)]
+const SYSCLK_FREQ: u32 = 48_000_000; // Hz
+const UPDATE_PERIOD: u32 = SYSCLK_FREQ / 50; // Cycles
+const MOVE_RATE_LIMIT: u32 = SYSCLK_FREQ / 3; // Cycles
+const BRIGHTNESS: u8 = 31; // Out of 255
+
+#[rtic::app(
+    device = stm32f3xx_hal::pac,
+    peripherals = true,
+    monotonic = rtic::cyccnt::CYCCNT
+)]
 const APP: () = {
     struct Resources {
         board: GameBoard,
@@ -46,15 +55,17 @@ const APP: () = {
             >,
         >,
 
-        delay: delay::Delay,
+        last_move_time: Instant,
     }
 
-    #[init]
+    #[init(spawn = [update])]
     fn init(cx: init::Context) -> init::LateResources {
         // Prepare our core and device peripherals
-        let cp: rtic::export::Peripherals = cx.core;
+        let cp: rtic::Peripherals = cx.core;
         let dp: Peripherals = cx.device;
 
+        let mut dcb = cp.DCB;
+        let mut dwt = cp.DWT;
         let mut flash = dp.FLASH.constrain();
         let mut rcc = dp.RCC.constrain();
         let mut syscfg = dp.SYSCFG.constrain(&mut rcc.apb2);
@@ -62,10 +73,13 @@ const APP: () = {
         let mut gpioa = dp.GPIOA.split(&mut rcc.ahb);
         let mut gpiob = dp.GPIOB.split(&mut rcc.ahb);
 
+        // Initialise monotonic timer for periodic interrupts
+        dcb.enable_trace();
+        dwt.enable_cycle_counter();
+
         let clocks = rcc
             .cfgr
-            .sysclk(48.MHz())
-            .pclk1(24.MHz())
+            .sysclk(SYSCLK_FREQ.Hz().into())
             .freeze(&mut flash.acr);
 
         // Set up SPI for WS2812b LEDs
@@ -94,7 +108,6 @@ const APP: () = {
         let status_led = gpioa
             .pa3
             .into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper);
-        let delay = delay::Delay::new(cp.SYST, clocks);
 
         let up_pin = gpioa
             .pa11
@@ -123,6 +136,8 @@ const APP: () = {
         let mut board = GameBoard::empty();
         board.set_random();
 
+        cx.spawn.update().unwrap();
+
         init::LateResources {
             board,
             status_led,
@@ -133,7 +148,7 @@ const APP: () = {
             a_pin,
             b_pin,
             board_leds,
-            delay,
+            last_move_time: cx.start,
         }
     }
 
@@ -143,48 +158,49 @@ const APP: () = {
         cx.resources.status_led.toggle().unwrap();
     }
 
-    #[idle(resources=[board, up_pin, down_pin, left_pin, right_pin, a_pin, board_leds, delay])]
-    fn idle(cx: idle::Context) -> ! {
-        let brightness_level = 31;
-        let mut debouncer = false;
-
-        loop {
-            let mut direction: Option<Direction> = None;
-            if cx.resources.up_pin.is_high().unwrap() {
-                direction = Some(Direction::Up);
-            } else if cx.resources.down_pin.is_high().unwrap() {
-                direction = Some(Direction::Down);
-            } else if cx.resources.left_pin.is_high().unwrap() {
-                direction = Some(Direction::Left);
-            } else if cx.resources.right_pin.is_high().unwrap() {
-                direction = Some(Direction::Right);
-            }
-
-            debouncer = match direction {
-                Some(chosen_direction) => {
-                    if !debouncer && cx.resources.board.make_move(chosen_direction) {
-                        cx.resources.board.set_random();
-                    }
-                    true
-                }
-                None => false,
-            };
-
-            let leds = match cx.resources.a_pin.is_low() {
-                Ok(true) => ScoreBoard::from_score(cx.resources.board.get_score()).into_board(),
-                Ok(false) | Err(_) => cx.resources.board.into_board(),
-            };
-
-            // TODO: Figure out the typing so the below line is cleaner
-            cx.resources
-                .board_leds
-                .write(brightness(
-                    gamma(leds.into_iter().cloned()),
-                    brightness_level,
-                ))
-                .unwrap();
-
-            cx.resources.delay.delay_ms(10u16);
+    #[task(
+        resources = [board, up_pin, down_pin, left_pin, right_pin, a_pin, board_leds, last_move_time],
+        schedule = [update]
+    )]
+    fn update(cx: update::Context) {
+        let mut direction: Option<Direction> = None;
+        if cx.resources.up_pin.is_high().unwrap() {
+            direction = Some(Direction::Up);
+        } else if cx.resources.down_pin.is_high().unwrap() {
+            direction = Some(Direction::Down);
+        } else if cx.resources.left_pin.is_high().unwrap() {
+            direction = Some(Direction::Left);
+        } else if cx.resources.right_pin.is_high().unwrap() {
+            direction = Some(Direction::Right);
         }
+
+        let time_since_last_move = Instant::now() - *cx.resources.last_move_time;
+        if time_since_last_move > MOVE_RATE_LIMIT.cycles() {
+            if let Some(chosen_direction) = direction {
+                if cx.resources.board.make_move(chosen_direction) {
+                    cx.resources.board.set_random();
+                }
+                *cx.resources.last_move_time = Instant::now();
+            }
+        }
+
+        let leds = match cx.resources.a_pin.is_low() {
+            Ok(true) => ScoreBoard::from_score(cx.resources.board.get_score()).into_board(),
+            Ok(false) | Err(_) => cx.resources.board.into_board(),
+        };
+
+        // TODO: Figure out the typing so the below line is cleaner
+        cx.resources
+            .board_leds
+            .write(brightness(gamma(leds.into_iter().cloned()), BRIGHTNESS))
+            .unwrap();
+
+        cx.schedule
+            .update(cx.scheduled + UPDATE_PERIOD.cycles())
+            .unwrap();
+    }
+
+    extern "C" {
+        fn USB_WKUP();
     }
 };
