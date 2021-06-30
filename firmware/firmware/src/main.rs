@@ -5,10 +5,10 @@ use core::convert::TryInto;
 
 use panic_halt as _;
 
-use stm32f3::stm32f303::SPI1;
+use stm32f3::stm32f303::{Peripherals, SPI1};
 use stm32f3xx_hal::{
     delay,
-    gpio::{Alternate, Gpioa, Gpiob, Input, Output, Pin, PushPull, U},
+    gpio::{gpioa, gpiob, Alternate, Edge, Input, Output, PushPull},
     prelude::*,
     spi::Spi,
 };
@@ -27,21 +27,21 @@ const APP: () = {
     struct Resources {
         board: GameBoard,
 
-        status_led: Pin<Gpioa, U<3>, Output<PushPull>>,
-        up_pin: Pin<Gpioa, U<11>, Input>,
-        down_pin: Pin<Gpioa, U<10>, Input>,
-        left_pin: Pin<Gpioa, U<8>, Input>,
-        right_pin: Pin<Gpioa, U<9>, Input>,
-        a_pin: Pin<Gpiob, U<6>, Input>,
-        b_pin: Pin<Gpiob, U<7>, Input>,
+        status_led: gpioa::PA3<Output<PushPull>>,
+        up_pin: gpioa::PA11<Input>,
+        down_pin: gpioa::PA10<Input>,
+        left_pin: gpioa::PA8<Input>,
+        right_pin: gpioa::PA9<Input>,
+        a_pin: gpiob::PB6<Input>,
+        b_pin: gpiob::PB7<Input>,
 
         board_leds: Ws2812<
             Spi<
                 SPI1,
                 (
-                    Pin<Gpioa, U<5>, Alternate<PushPull, 5>>,
-                    Pin<Gpioa, U<6>, Alternate<PushPull, 5>>,
-                    Pin<Gpiob, U<5>, Alternate<PushPull, 5>>,
+                    gpioa::PA5<Alternate<PushPull, 5>>,
+                    gpioa::PA6<Alternate<PushPull, 5>>,
+                    gpiob::PB5<Alternate<PushPull, 5>>,
                 ),
             >,
         >,
@@ -51,12 +51,14 @@ const APP: () = {
 
     #[init]
     fn init(cx: init::Context) -> init::LateResources {
-        // Prepare our peripherals
-        let cp = cx.core;
-        let dp = cx.device;
+        // Prepare our core and device peripherals
+        let cp: rtic::export::Peripherals = cx.core;
+        let dp: Peripherals = cx.device;
 
         let mut flash = dp.FLASH.constrain();
         let mut rcc = dp.RCC.constrain();
+        let mut syscfg = dp.SYSCFG.constrain(&mut rcc.apb2);
+        let mut exti = dp.EXTI;
         let mut gpioa = dp.GPIOA.split(&mut rcc.ahb);
         let mut gpiob = dp.GPIOB.split(&mut rcc.ahb);
 
@@ -110,9 +112,12 @@ const APP: () = {
         let a_pin = gpiob
             .pb6
             .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr);
-        let b_pin = gpiob
+        let mut b_pin = gpiob
             .pb7
             .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr);
+        b_pin.make_interrupt_source(&mut syscfg);
+        b_pin.trigger_on_edge(&mut exti, Edge::RisingFalling);
+        b_pin.enable_interrupt(&mut exti);
 
         // Create the 2048 board
         let mut board = GameBoard::empty();
@@ -132,7 +137,13 @@ const APP: () = {
         }
     }
 
-    #[idle(resources=[board, status_led, up_pin, down_pin, left_pin, right_pin, a_pin, board_leds, delay])]
+    #[task(binds = EXTI9_5, resources = [status_led, b_pin])]
+    fn exti9_5(cx: exti9_5::Context) {
+        cx.resources.b_pin.clear_interrupt_pending_bit();
+        cx.resources.status_led.toggle().unwrap();
+    }
+
+    #[idle(resources=[board, up_pin, down_pin, left_pin, right_pin, a_pin, board_leds, delay])]
     fn idle(cx: idle::Context) -> ! {
         let brightness_level = 31;
         let mut debouncer = false;
@@ -173,7 +184,6 @@ const APP: () = {
                 ))
                 .unwrap();
 
-            cx.resources.status_led.toggle().unwrap();
             cx.resources.delay.delay_ms(10u16);
         }
     }
