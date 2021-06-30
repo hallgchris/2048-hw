@@ -6,7 +6,7 @@ use core::convert::TryInto;
 use panic_halt as _;
 
 use rtic::cyccnt::{Instant, U32Ext};
-use stm32f3::stm32f303::{Peripherals, SPI1};
+use stm32f3::stm32f303::{Peripherals, EXTI, SPI1};
 use stm32f3xx_hal::{
     gpio::{gpioa, gpiob, Alternate, Edge, Input, Output, PushPull},
     prelude::*,
@@ -35,6 +35,8 @@ const BRIGHTNESS: u8 = 31; // Out of 255
 const APP: () = {
     struct Resources {
         board: GameBoard,
+
+        exti: EXTI,
 
         status_led: gpioa::PA3<Output<PushPull>>,
         up_pin: gpioa::PA11<Input>,
@@ -109,18 +111,30 @@ const APP: () = {
             .pa3
             .into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper);
 
-        let up_pin = gpioa
+        let mut up_pin = gpioa
             .pa11
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
-        let down_pin = gpioa
+        up_pin.make_interrupt_source(&mut syscfg);
+        up_pin.trigger_on_edge(&mut exti, Edge::Rising);
+        up_pin.enable_interrupt(&mut exti);
+        let mut down_pin = gpioa
             .pa10
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
-        let left_pin = gpioa
+        down_pin.make_interrupt_source(&mut syscfg);
+        down_pin.trigger_on_edge(&mut exti, Edge::Rising);
+        down_pin.enable_interrupt(&mut exti);
+        let mut left_pin = gpioa
             .pa8
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
-        let right_pin = gpioa
+        left_pin.make_interrupt_source(&mut syscfg);
+        left_pin.trigger_on_edge(&mut exti, Edge::Rising);
+        left_pin.enable_interrupt(&mut exti);
+        let mut right_pin = gpioa
             .pa9
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
+        right_pin.make_interrupt_source(&mut syscfg);
+        right_pin.trigger_on_edge(&mut exti, Edge::Rising);
+        right_pin.enable_interrupt(&mut exti);
 
         let a_pin = gpiob
             .pb6
@@ -140,6 +154,7 @@ const APP: () = {
 
         init::LateResources {
             board,
+            exti,
             status_led,
             up_pin,
             down_pin,
@@ -152,42 +167,70 @@ const APP: () = {
         }
     }
 
-    #[task(binds = EXTI9_5, resources = [status_led, b_pin])]
+    #[task(
+        priority = 3,
+        binds = EXTI9_5,
+        resources = [exti, status_led, b_pin, left_pin, right_pin],
+        spawn = [make_move]
+    )]
     fn exti9_5(cx: exti9_5::Context) {
-        cx.resources.b_pin.clear_interrupt_pending_bit();
-        cx.resources.status_led.toggle().unwrap();
+        let pr = cx.resources.exti.pr1.read();
+        if pr.pr7().is_pending() {
+            cx.resources.b_pin.clear_interrupt_pending_bit();
+            cx.resources.status_led.toggle().unwrap();
+        } else if pr.pr8().is_pending() {
+            cx.resources.left_pin.clear_interrupt_pending_bit();
+            let _ = cx.spawn.make_move(Direction::Left);
+        } else if pr.pr9().is_pending() {
+            cx.resources.right_pin.clear_interrupt_pending_bit();
+            let _ = cx.spawn.make_move(Direction::Right);
+        }
     }
 
     #[task(
-        resources = [board, up_pin, down_pin, left_pin, right_pin, a_pin, board_leds, last_move_time],
+        priority = 3,
+        binds = EXTI15_10,
+        resources = [exti, up_pin, down_pin, left_pin],
+        spawn = [make_move]
+    )]
+    fn exti15_10(cx: exti15_10::Context) {
+        let pr = cx.resources.exti.pr1.read();
+        if pr.pr10().is_pending() {
+            cx.resources.down_pin.clear_interrupt_pending_bit();
+            let _ = cx.spawn.make_move(Direction::Down);
+        } else if pr.pr11().is_pending() {
+            cx.resources.up_pin.clear_interrupt_pending_bit();
+            let _ = cx.spawn.make_move(Direction::Up);
+        }
+    }
+
+    #[task(
+        priority = 2,
+        resources = [board, last_move_time],
+        capacity = 3
+    )]
+    fn make_move(cx: make_move::Context, direction: Direction) {
+        let time_since_last_move = Instant::now() - *cx.resources.last_move_time;
+        if time_since_last_move > MOVE_RATE_LIMIT.cycles()
+            && cx.resources.board.make_move(direction)
+        {
+            cx.resources.board.set_random();
+        }
+        *cx.resources.last_move_time = Instant::now();
+    }
+
+    #[task(
+        priority = 1,
+        resources = [board, a_pin, board_leds, last_move_time],
         schedule = [update]
     )]
-    fn update(cx: update::Context) {
-        let mut direction: Option<Direction> = None;
-        if cx.resources.up_pin.is_high().unwrap() {
-            direction = Some(Direction::Up);
-        } else if cx.resources.down_pin.is_high().unwrap() {
-            direction = Some(Direction::Down);
-        } else if cx.resources.left_pin.is_high().unwrap() {
-            direction = Some(Direction::Left);
-        } else if cx.resources.right_pin.is_high().unwrap() {
-            direction = Some(Direction::Right);
-        }
+    fn update(mut cx: update::Context) {
+        let show_score = cx.resources.a_pin.is_low();
 
-        let time_since_last_move = Instant::now() - *cx.resources.last_move_time;
-        if time_since_last_move > MOVE_RATE_LIMIT.cycles() {
-            if let Some(chosen_direction) = direction {
-                if cx.resources.board.make_move(chosen_direction) {
-                    cx.resources.board.set_random();
-                }
-                *cx.resources.last_move_time = Instant::now();
-            }
-        }
-
-        let leds = match cx.resources.a_pin.is_low() {
-            Ok(true) => ScoreBoard::from_score(cx.resources.board.get_score()).into_board(),
-            Ok(false) | Err(_) => cx.resources.board.into_board(),
-        };
+        let leds = cx.resources.board.lock(|board| match show_score {
+            Ok(true) => ScoreBoard::from_score(board.get_score()).into_board(),
+            Ok(false) | Err(_) => board.into_board(),
+        });
 
         // TODO: Figure out the typing so the below line is cleaner
         cx.resources
@@ -202,5 +245,7 @@ const APP: () = {
 
     extern "C" {
         fn USB_WKUP();
+        fn USB_LP();
+        fn USB_HP();
     }
 };
