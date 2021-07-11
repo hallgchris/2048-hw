@@ -3,7 +3,7 @@ use core::fmt::Debug;
 use heapless::{consts, Vec};
 use rand::RngCore;
 use smart_leds::{
-    colors::{BLACK, WHITE},
+    colors::{BLACK, DIM_GRAY, WHITE},
     hsv::{hsv2rgb, Hsv},
     RGB8,
 };
@@ -32,8 +32,13 @@ impl GameBoard {
 
     /// Create a board entirely filled with some tile.
     fn full_of(value: u32) -> GameBoard {
+        GameBoard::with_tiles([value; SIZE * SIZE])
+    }
+
+    /// Create a board containing the specified tiles
+    pub fn with_tiles(tiles: [u32; SIZE * SIZE]) -> GameBoard {
         GameBoard {
-            tiles: [value; SIZE * SIZE],
+            tiles,
             rng: WyRng::default(),
             score: 0,
         }
@@ -202,24 +207,38 @@ impl GameBoard {
     }
 }
 
+fn colour_with_hue(hue: u8) -> RGB8 {
+    hsv2rgb(Hsv {
+        hue,
+        sat: 255,
+        val: 255,
+    })
+}
+
 /// Map blank tiles to be off
 /// Map 2 to 1024 tiles to rainbow colours
-/// Map 2048 to 8192 tiles to shades of white
-/// Map tiles greater than 8192 to the same white as 8192
+/// Map 2048 to 8192 tiles to decreasing shades of white
+/// Map tiles greater than 8192 to the same gray as 8192
 fn get_tile_colour(value: u32) -> RGB8 {
     match value {
-        0 => BLACK,
-        1..=10 => hsv2rgb(Hsv {
-            hue: (value as u8 - 1) * (255 / 10),
-            sat: 0xff,
-            val: 0xbf,
-        }),
-        11..=13 => hsv2rgb(Hsv {
-            hue: 0,
-            sat: 0,
-            val: (value as u8 - 11) * (128 / 3) + 127,
-        }),
-        _ => WHITE,
+        0 => BLACK,              // Empty tile
+        1 => colour_with_hue(0), // 2
+        2 => colour_with_hue(15),
+        3 => colour_with_hue(50),
+        4 => colour_with_hue(80),
+        5 => colour_with_hue(95),
+        6 => colour_with_hue(130),
+        7 => colour_with_hue(170),
+        8 => colour_with_hue(195),
+        9 => colour_with_hue(230),
+        10 => colour_with_hue(250),
+        11 => WHITE, // 2048
+        12 => DIM_GRAY,
+        _ => RGB8 {
+            r: 0x20,
+            g: 0x20,
+            b: 0x20,
+        },
     }
 }
 

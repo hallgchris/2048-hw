@@ -13,7 +13,7 @@ use stm32f3xx_hal::{
     spi::Spi,
 };
 
-use smart_leds::{brightness, gamma, SmartLedsWrite};
+use smart_leds::{brightness, SmartLedsWrite};
 use ws2812_spi::Ws2812;
 
 use mmxlviii::{
@@ -150,6 +150,7 @@ const APP: () = {
         // Create the 2048 board
         let mut board = GameBoard::empty();
         board.set_random();
+        board.set_random();
 
         cx.spawn.update().unwrap();
 
@@ -240,7 +241,7 @@ const APP: () = {
         // TODO: Figure out the typing so the below line is cleaner
         cx.resources
             .board_leds
-            .write(brightness(gamma(leds.into_iter().cloned()), BRIGHTNESS))
+            .write(brightness(leds.into_iter().cloned(), BRIGHTNESS))
             .unwrap();
 
         cx.schedule
