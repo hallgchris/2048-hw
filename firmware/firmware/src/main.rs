@@ -5,7 +5,7 @@ use core::convert::TryInto;
 
 use panic_halt as _;
 
-use rtic::cyccnt::{Instant, U32Ext};
+use rtic::cyccnt::U32Ext;
 use stm32f3::stm32f303::{Peripherals, EXTI, SPI1};
 use stm32f3xx_hal::{
     gpio::{gpioa, gpiob, Alternate, Edge, Input, Output, PushPull},
@@ -23,7 +23,7 @@ use mmxlviii::{
 };
 
 const SYSCLK_FREQ: u32 = 48_000_000; // Hz
-const UPDATE_PERIOD: u32 = SYSCLK_FREQ / 50; // Cycles
+const UPDATE_PERIOD: u32 = SYSCLK_FREQ / 60; // Cycles
 const MOVE_RATE_LIMIT: u32 = SYSCLK_FREQ / 3; // Cycles
 const BRIGHTNESS: u8 = 31; // Out of 255
 
@@ -57,7 +57,8 @@ const APP: () = {
             >,
         >,
 
-        last_move_time: Instant,
+        #[init(true)]
+        is_move_allowed: bool,
     }
 
     #[init(spawn = [update])]
@@ -163,7 +164,6 @@ const APP: () = {
             a_pin,
             b_pin,
             board_leds,
-            last_move_time: cx.start,
         }
     }
 
@@ -206,22 +206,27 @@ const APP: () = {
 
     #[task(
         priority = 2,
-        resources = [board, last_move_time],
-        capacity = 3
+        resources = [board, is_move_allowed],
+        schedule = [allow_moves]
     )]
     fn make_move(cx: make_move::Context, direction: Direction) {
-        let time_since_last_move = Instant::now() - *cx.resources.last_move_time;
-        if time_since_last_move > MOVE_RATE_LIMIT.cycles()
-            && cx.resources.board.make_move(direction)
-        {
+        if *cx.resources.is_move_allowed && cx.resources.board.make_move(direction) {
             cx.resources.board.set_random();
+            *cx.resources.is_move_allowed = false;
+            cx.schedule
+                .allow_moves(cx.scheduled + MOVE_RATE_LIMIT.cycles())
+                .unwrap();
         }
-        *cx.resources.last_move_time = Instant::now();
+    }
+
+    #[task(priority = 2, resources = [is_move_allowed])]
+    fn allow_moves(cx: allow_moves::Context) {
+        *cx.resources.is_move_allowed = true;
     }
 
     #[task(
         priority = 1,
-        resources = [board, a_pin, board_leds, last_move_time],
+        resources = [board, a_pin, board_leds],
         schedule = [update]
     )]
     fn update(mut cx: update::Context) {
