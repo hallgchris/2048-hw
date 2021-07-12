@@ -224,11 +224,11 @@ fn get_tile_colour(value: u32) -> RGB8 {
         0 => BLACK,              // Empty tile
         1 => colour_with_hue(0), // 2
         2 => colour_with_hue(15),
-        3 => colour_with_hue(50),
-        4 => colour_with_hue(80),
+        3 => colour_with_hue(45),
+        4 => colour_with_hue(75),
         5 => colour_with_hue(95),
         6 => colour_with_hue(130),
-        7 => colour_with_hue(170),
+        7 => colour_with_hue(175),
         8 => colour_with_hue(195),
         9 => colour_with_hue(230),
         10 => colour_with_hue(250),
