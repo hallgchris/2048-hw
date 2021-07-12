@@ -5,6 +5,7 @@ use core::convert::TryInto;
 
 use panic_halt as _;
 
+use cortex_m::interrupt;
 use rtic::cyccnt::U32Ext;
 use stm32f3::stm32f303::{Peripherals, EXTI, SPI1};
 use stm32f3xx_hal::{
@@ -238,11 +239,15 @@ const APP: () = {
             Ok(false) | Err(_) => board.into_board(),
         });
 
-        // TODO: Figure out the typing so the below line is cleaner
-        cx.resources
-            .board_leds
-            .write(brightness(leds.into_iter().cloned(), BRIGHTNESS))
-            .unwrap();
+        // Prevent interrupts occurring during LED write.
+        // If this were to occur, the LEDs would display incorrect data
+        // manifesting as a momentary flicker.
+        interrupt::free(|_| {
+            cx.resources
+                .board_leds
+                .write(brightness(leds.into_iter().cloned(), BRIGHTNESS))
+                .unwrap()
+        });
 
         cx.schedule
             .update(cx.scheduled + UPDATE_PERIOD.cycles())
