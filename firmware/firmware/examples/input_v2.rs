@@ -1,15 +1,17 @@
 #![no_std]
 #![no_main]
 
+use core::convert::TryInto;
+
 use panic_halt as _;
 
 use cortex_m_rt::entry;
 use stm32f3xx_hal::{
     delay,
     gpio::{
-        gpioa::{PA10, PA11, PA8, PA9},
-        gpiob::{PB6, PB7},
-        Input, PullUp,
+        gpioa::{PA11, PA12, PA8, PA9},
+        gpiob::{PB0, PB1},
+        Input,
     },
     pac,
     prelude::*,
@@ -25,13 +27,13 @@ use ws2812_spi::Ws2812;
 use mmxlviii::board::{Board, Coord, IntoBoard, SIZE};
 
 struct JoystickDemoBoard {
-    up_pin: PA11<Input<PullUp>>,
-    down_pin: PA10<Input<PullUp>>,
-    left_pin: PA8<Input<PullUp>>,
-    right_pin: PA9<Input<PullUp>>,
+    up_pin: PA8<Input>,
+    down_pin: PA9<Input>,
+    left_pin: PB1<Input>,
+    right_pin: PB0<Input>,
 
-    a_pin: PB6<Input<PullUp>>,
-    b_pin: PB7<Input<PullUp>>,
+    a_pin: PA12<Input>,
+    b_pin: PA11<Input>,
 }
 
 impl IntoBoard for JoystickDemoBoard {
@@ -78,21 +80,27 @@ fn main() -> ! {
 
     let clocks = rcc
         .cfgr
-        .sysclk(24.mhz())
-        .pclk1(12.mhz())
+        .sysclk(24.MHz())
+        .pclk1(12.MHz())
         .freeze(&mut flash.acr);
 
     // Set up SPI for WS2812b LEDs
     let (sck, miso, mosi) = (
-        gpioa.pa5.into_af5(&mut gpioa.moder, &mut gpioa.afrl),
-        gpioa.pa6.into_af5(&mut gpioa.moder, &mut gpioa.afrl),
-        gpiob.pb5.into_af5(&mut gpiob.moder, &mut gpiob.afrl),
+        gpioa
+            .pa5
+            .into_af5_push_pull(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrl),
+        gpioa
+            .pa6
+            .into_af5_push_pull(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrl),
+        gpiob
+            .pb5
+            .into_af5_push_pull(&mut gpiob.moder, &mut gpiob.otyper, &mut gpiob.afrl),
     );
     let spi = Spi::spi1(
         dp.SPI1,
         (sck, miso, mosi),
         ws2812_spi::MODE,
-        3.mhz(),
+        3.MHz().try_into().unwrap(),
         clocks,
         &mut rcc.apb2,
     );
@@ -106,24 +114,24 @@ fn main() -> ! {
 
     // Set up joystick demo
     let board = JoystickDemoBoard {
-        left_pin: gpioa
-            .pa8
-            .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr),
-        right_pin: gpioa
+        left_pin: gpiob
+            .pb1
+            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr),
+        right_pin: gpiob
+            .pb0
+            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr),
+        down_pin: gpioa
             .pa9
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr),
-        down_pin: gpioa
-            .pa10
-            .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr),
         up_pin: gpioa
+            .pa8
+            .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr),
+        a_pin: gpioa
+            .pa12
+            .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr),
+        b_pin: gpioa
             .pa11
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr),
-        a_pin: gpiob
-            .pb6
-            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr),
-        b_pin: gpiob
-            .pb7
-            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr),
     };
 
     loop {

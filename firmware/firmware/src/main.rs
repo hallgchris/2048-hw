@@ -40,12 +40,14 @@ const APP: () = {
         exti: EXTI,
 
         status_led: gpioa::PA3<Output<PushPull>>,
-        up_pin: gpioa::PA11<Input>,
-        down_pin: gpioa::PA10<Input>,
-        left_pin: gpioa::PA8<Input>,
-        right_pin: gpioa::PA9<Input>,
-        a_pin: gpiob::PB6<Input>,
-        b_pin: gpiob::PB7<Input>,
+
+        up_pin: gpioa::PA8<Input>,
+        down_pin: gpioa::PA9<Input>,
+        left_pin: gpiob::PB1<Input>,
+        right_pin: gpiob::PB0<Input>,
+
+        a_pin: gpioa::PA12<Input>,
+        b_pin: gpioa::PA11<Input>,
 
         board_leds: Ws2812<
             Spi<
@@ -114,36 +116,36 @@ const APP: () = {
             .into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper);
 
         let mut up_pin = gpioa
-            .pa11
+            .pa8
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
         up_pin.make_interrupt_source(&mut syscfg);
         up_pin.trigger_on_edge(&mut exti, Edge::Rising);
         up_pin.enable_interrupt(&mut exti);
         let mut down_pin = gpioa
-            .pa10
+            .pa9
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
         down_pin.make_interrupt_source(&mut syscfg);
         down_pin.trigger_on_edge(&mut exti, Edge::Rising);
         down_pin.enable_interrupt(&mut exti);
-        let mut left_pin = gpioa
-            .pa8
-            .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
+        let mut left_pin = gpiob
+            .pb1
+            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr);
         left_pin.make_interrupt_source(&mut syscfg);
         left_pin.trigger_on_edge(&mut exti, Edge::Rising);
         left_pin.enable_interrupt(&mut exti);
-        let mut right_pin = gpioa
-            .pa9
-            .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
+        let mut right_pin = gpiob
+            .pb0
+            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr);
         right_pin.make_interrupt_source(&mut syscfg);
         right_pin.trigger_on_edge(&mut exti, Edge::Rising);
         right_pin.enable_interrupt(&mut exti);
 
-        let a_pin = gpiob
-            .pb6
-            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr);
-        let mut b_pin = gpiob
-            .pb7
-            .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr);
+        let a_pin = gpioa
+            .pa12
+            .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
+        let mut b_pin = gpioa
+            .pa11
+            .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
         b_pin.make_interrupt_source(&mut syscfg);
         b_pin.trigger_on_edge(&mut exti, Edge::RisingFalling);
         b_pin.enable_interrupt(&mut exti);
@@ -171,19 +173,13 @@ const APP: () = {
 
     #[task(
         priority = 3,
-        binds = EXTI9_5,
-        resources = [exti, status_led, b_pin, left_pin, right_pin],
+        binds = EXTI0,
+        resources = [exti, right_pin],
         spawn = [make_move]
     )]
-    fn exti9_5(cx: exti9_5::Context) {
+    fn exti0(cx: exti0::Context) {
         let pr = cx.resources.exti.pr1.read();
-        if pr.pr7().is_pending() {
-            cx.resources.b_pin.clear_interrupt_pending_bit();
-            cx.resources.status_led.toggle().unwrap();
-        } else if pr.pr8().is_pending() {
-            cx.resources.left_pin.clear_interrupt_pending_bit();
-            let _ = cx.spawn.make_move(Direction::Left);
-        } else if pr.pr9().is_pending() {
+        if pr.pr0().is_pending() {
             cx.resources.right_pin.clear_interrupt_pending_bit();
             let _ = cx.spawn.make_move(Direction::Right);
         }
@@ -191,18 +187,46 @@ const APP: () = {
 
     #[task(
         priority = 3,
+        binds = EXTI1,
+        resources = [exti, left_pin],
+        spawn = [make_move]
+    )]
+    fn exti1(cx: exti1::Context) {
+        let pr = cx.resources.exti.pr1.read();
+        if pr.pr1().is_pending() {
+            cx.resources.left_pin.clear_interrupt_pending_bit();
+            let _ = cx.spawn.make_move(Direction::Left);
+        }
+    }
+
+    #[task(
+        priority = 3,
+        binds = EXTI9_5,
+        resources = [exti, down_pin, up_pin],
+        spawn = [make_move]
+    )]
+    fn exti9_5(cx: exti9_5::Context) {
+        let pr = cx.resources.exti.pr1.read();
+        if pr.pr9().is_pending() {
+            cx.resources.down_pin.clear_interrupt_pending_bit();
+            let _ = cx.spawn.make_move(Direction::Down);
+        } else if pr.pr8().is_pending() {
+            cx.resources.up_pin.clear_interrupt_pending_bit();
+            let _ = cx.spawn.make_move(Direction::Up);
+        }
+    }
+
+    #[task(
+        priority = 3,
         binds = EXTI15_10,
-        resources = [exti, up_pin, down_pin, left_pin],
+        resources = [exti, b_pin, status_led],
         spawn = [make_move]
     )]
     fn exti15_10(cx: exti15_10::Context) {
         let pr = cx.resources.exti.pr1.read();
-        if pr.pr10().is_pending() {
-            cx.resources.down_pin.clear_interrupt_pending_bit();
-            let _ = cx.spawn.make_move(Direction::Down);
-        } else if pr.pr11().is_pending() {
-            cx.resources.up_pin.clear_interrupt_pending_bit();
-            let _ = cx.spawn.make_move(Direction::Up);
+        if pr.pr11().is_pending() {
+            cx.resources.b_pin.clear_interrupt_pending_bit();
+            cx.resources.status_led.toggle().unwrap();
         }
     }
 
