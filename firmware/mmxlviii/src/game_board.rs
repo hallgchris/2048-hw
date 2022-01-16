@@ -1,7 +1,8 @@
 use core::fmt::Debug;
 
-use heapless::{consts, Vec};
+use heapless::Vec;
 use rand::RngCore;
+use serde::{Deserialize, Serialize};
 use smart_leds::{
     colors::{BLACK, DIM_GRAY, WHITE},
     hsv::{hsv2rgb, Hsv},
@@ -18,9 +19,30 @@ enum TileMoveResult {
     Merge(Coord),
 }
 
+struct MyRng(WyRng);
+
+impl Serialize for MyRng {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_none()
+    }
+}
+
+impl<'de> Deserialize<'de> for MyRng {
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(MyRng(WyRng::default()))
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct GameBoard {
     tiles: [u32; SIZE * SIZE],
-    rng: WyRng,
+    rng: MyRng,
     score: u32,
 }
 
@@ -39,7 +61,7 @@ impl GameBoard {
     pub fn with_tiles(tiles: [u32; SIZE * SIZE]) -> GameBoard {
         GameBoard {
             tiles,
-            rng: WyRng::default(),
+            rng: MyRng(WyRng::default()),
             score: 0,
         }
     }
@@ -98,7 +120,7 @@ impl GameBoard {
     /// Get the location of a random empty tile.
     /// Returns `None` if no empty tiles are present.
     fn random_vacant_tile(&mut self) -> Option<Coord> {
-        let mut vacant_tiles = Vec::<Coord, consts::U16>::new();
+        let mut vacant_tiles = Vec::<Coord, 16>::new();
         let num_vacant = self.vacant_tiles().fold(0, |count, coord| {
             vacant_tiles
                 .push(coord)
@@ -106,7 +128,7 @@ impl GameBoard {
             count + 1
         });
         if num_vacant > 0 {
-            let index = (self.rng.next_u32() as usize) % num_vacant;
+            let index = (self.rng.0.next_u32() as usize) % num_vacant;
             Some(vacant_tiles[index])
         } else {
             None
@@ -117,7 +139,11 @@ impl GameBoard {
     /// If no empty tile is found, then no changes are made and `false` is returned.
     pub fn set_random(&mut self) -> bool {
         if let Some(tile) = self.random_vacant_tile() {
-            let value = if self.rng.next_u32() % 10 == 0 { 2 } else { 1 };
+            let value = if self.rng.0.next_u32() % 10 == 0 {
+                2
+            } else {
+                1
+            };
             self.set_tile(tile, value);
             true
         } else {

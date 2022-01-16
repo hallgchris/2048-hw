@@ -9,13 +9,20 @@ version = "0.1.0"
 cortex-m = "0.7.1"
 cortex-m-rt = "0.6.13"
 cortex-m-rtic = "0.5.5"
-panic-halt = "0.2.0"
+panic-halt = "0.2.0"    # TODO: Remove in favour of rtt
 
-stm32f3 = {version = "0.13.2", features = ["stm32f303", "rt"]}
-stm32f3xx-hal = {version = "0.7.0", features = ["stm32f303x8", "rt"]}
+panic-rtt-target = { version = "0.1.1", features = ["cortex-m"] }
+rtt-target = { version = "0.2.2", features = ["cortex-m"] }
+
+stm32f3 = { version = "0.13.2", features = ["stm32f303", "rt"] }
+stm32f3xx-hal = { version = "0.7.0", features = ["stm32f303x8", "rt"] }
 
 smart-leds = "0.3.0"
 ws2812-spi = "0.4.0"
+eeprom24x = "0.4.0"
+
+heapless = "0.7.9"
+postcard = "0.7.3"
 
 mmxlviii = { path = "../mmxlviii" }
 

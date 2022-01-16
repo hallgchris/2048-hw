@@ -1,9 +1,7 @@
 [workspace]
 
-members = [
-    "firmware",
-    "mmxlviii",
-]
+members = ["firmware", "mmxlviii"]
+resolver = "2"                     # See https://github.com/stm32-rs/stm32f3xx-hal/issues/268
 
 [profile.dev]
 # Required to meet WS2812 timings
@@ -11,5 +9,5 @@ opt-level = 2
 
 [profile.release]
 codegen-units = 1 # better optimizations
-debug = true # symbols are nice and they don't increase the size on Flash
-lto = true # better optimizations
+debug = true      # symbols are nice and they don't increase the size on Flash
+lto = true        # better optimizations
