@@ -26,14 +26,16 @@ use cortex_m_rt::entry;
 use heapless::Vec;
 use mmxlviii::game_board::GameBoard;
 use panic_rtt_target as _;
-use postcard::to_vec;
+use postcard::{from_bytes, to_vec};
 use rtt_target::{rprintln, rtt_init_print};
 use stm32f3xx_hal::{self as hal, delay::Delay, pac, prelude::*};
 
 use eeprom24x::{Eeprom24x, SlaveAddr};
 
 const BUFFER_SIZE: usize = 128;
-const PAGE_SIZE: usize = 8;
+const PAGE_SIZE: usize = 16;
+const DATA_SIZE: usize = 2 * PAGE_SIZE;
+const MEMORY_BASE: u32 = 0x00;
 
 #[entry]
 fn main() -> ! {
@@ -73,19 +75,47 @@ fn main() -> ! {
         &mut rcc.apb1,
     );
 
-    let board = GameBoard::empty();
+    let mut board = GameBoard::empty();
+    board.set_random();
+    board.set_random();
+    board.make_move(mmxlviii::board::Direction::Right);
+    board.set_random();
+    board.make_move(mmxlviii::board::Direction::Up);
+    board.set_random();
     let mut bytes: Vec<u8, BUFFER_SIZE> = to_vec(&board).unwrap();
-    bytes.resize(PAGE_SIZE, 0).unwrap();
+
+    rprintln!("Board: {:?}", board);
+    rprintln!("Bytes: {:?}", bytes);
+    rprintln!("Bytes len: {}", bytes.len());
+
+    bytes.resize(DATA_SIZE, 0).unwrap();
 
     let mut eeprom = Eeprom24x::new_24x08(i2c, SlaveAddr::Alternative(false, true, true));
-    let memory_address = 0x01;
-    eeprom.write_page(memory_address, &bytes).unwrap();
 
-    // wait maximum time necessary for write
-    delay.delay_ms(5_u16);
+    bytes
+        .chunks(PAGE_SIZE)
+        .enumerate()
+        .for_each(|(page_num, page)| {
+            let page_address = MEMORY_BASE + (page_num * PAGE_SIZE) as u32;
+
+            rprintln!("Writing page {} at address {}", page_num, page_address);
+            eeprom.write_page(page_address, page).unwrap();
+
+            // wait maximum time necessary for write
+            delay.delay_ms(5_u16);
+        });
+
     loop {
-        let mut data = [0; PAGE_SIZE];
-        eeprom.read_data(memory_address, &mut data).unwrap();
+        let mut data = [0; DATA_SIZE];
+        eeprom.read_data(MEMORY_BASE, &mut data).unwrap();
+        eeprom
+            .read_data(MEMORY_BASE + PAGE_SIZE as u32, &mut data[PAGE_SIZE..])
+            .unwrap();
+        match from_bytes::<GameBoard>(&data) {
+            Ok(board) => rprintln!("Parsed a board from eeprom: {:?}", board),
+            Err(_) => rprintln!("Error reading board"),
+        };
+
         let mut equal = true;
         for i in 0..PAGE_SIZE {
             if data[i] != bytes[i] {
@@ -94,9 +124,9 @@ fn main() -> ! {
         }
         if equal {
             led.set_high().unwrap();
-            delay.delay_ms(500_u16);
+            delay.delay_ms(5000_u16);
             led.set_low().unwrap();
-            delay.delay_ms(500_u16);
+            delay.delay_ms(5000_u16);
         }
     }
 }

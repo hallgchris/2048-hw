@@ -3,17 +3,24 @@
 
 use core::convert::TryInto;
 
-use panic_halt as _;
+use panic_rtt_target as _;
 
 use cortex_m::interrupt;
 use rtic::cyccnt::U32Ext;
-use stm32f3::stm32f303::{Peripherals, EXTI, SPI1};
+use rtt_target::{rprintln, rtt_init_print};
+use stm32f3::stm32f303::{Peripherals, EXTI, I2C1, SPI1};
 use stm32f3xx_hal::{
-    gpio::{gpioa, gpiob, Alternate, Edge, Input, Output, PushPull},
+    gpio::{
+        gpioa,
+        gpiob::{self, PB6, PB7},
+        Alternate, Edge, Input, OpenDrain, Output, PushPull,
+    },
+    i2c::I2c,
     prelude::*,
     spi::Spi,
 };
 
+use eeprom24x::{addr_size::OneByte, page_size::B16, Eeprom24x, SlaveAddr};
 use smart_leds::{brightness, SmartLedsWrite};
 use ws2812_spi::Ws2812;
 
@@ -23,10 +30,37 @@ use mmxlviii::{
     score_board::ScoreBoard,
 };
 
+type EepromScl = PB6<Alternate<OpenDrain, 4>>;
+type EepromSda = PB7<Alternate<OpenDrain, 4>>;
+type EepromI2c = I2c<I2C1, (EepromScl, EepromSda)>;
+type Eeprom = Eeprom24x<EepromI2c, B16, OneByte>;
+
 const SYSCLK_FREQ: u32 = 48_000_000; // Hz
 const UPDATE_PERIOD: u32 = SYSCLK_FREQ / 60; // Cycles
 const MOVE_RATE_LIMIT: u32 = SYSCLK_FREQ / 3; // Cycles
 const BRIGHTNESS: u8 = 31; // Out of 255
+
+const PAGE_SIZE: usize = 16;
+const DATA_SIZE: usize = 2 * PAGE_SIZE;
+const MEMORY_BASE: u32 = 0x00;
+
+fn read_board_from_eeprom(eeprom: &mut Eeprom) -> Option<GameBoard> {
+    let mut bytes = [0; DATA_SIZE];
+    eeprom.read_data(MEMORY_BASE, &mut bytes).ok();
+    eeprom
+        .read_data(MEMORY_BASE + PAGE_SIZE as u32, &mut bytes[PAGE_SIZE..])
+        .ok();
+
+    GameBoard::from_bytes(&bytes)
+}
+
+fn write_board_to_eeprom(eeprom: &mut Eeprom, board: &GameBoard) {
+    let mut bytes = board.to_bytes();
+    eeprom.write_page(MEMORY_BASE, &mut bytes[..PAGE_SIZE]).ok();
+    eeprom
+        .write_page(MEMORY_BASE + PAGE_SIZE as u32, &mut bytes[PAGE_SIZE..])
+        .ok();
+}
 
 #[rtic::app(
     device = stm32f3xx_hal::pac,
@@ -60,12 +94,17 @@ const APP: () = {
             >,
         >,
 
+        eeprom: Eeprom,
+
         #[init(true)]
         is_move_allowed: bool,
     }
 
     #[init(spawn = [update])]
     fn init(cx: init::Context) -> init::LateResources {
+        rtt_init_print!();
+        rprintln!("2048-hw");
+
         // Prepare our core and device peripherals
         let cp: rtic::Peripherals = cx.core;
         let dp: Peripherals = cx.device;
@@ -110,6 +149,27 @@ const APP: () = {
         );
         let board_leds = Ws2812::new(spi);
 
+        // Initialise the EEPROM
+        let mut scl =
+            gpiob
+                .pb6
+                .into_af4_open_drain(&mut gpiob.moder, &mut gpiob.otyper, &mut gpiob.afrl);
+        let mut sda =
+            gpiob
+                .pb7
+                .into_af4_open_drain(&mut gpiob.moder, &mut gpiob.otyper, &mut gpiob.afrl);
+        scl.internal_pull_up(&mut gpiob.pupdr, true);
+        sda.internal_pull_up(&mut gpiob.pupdr, true);
+
+        let i2c = I2c::new(
+            dp.I2C1,
+            (scl, sda),
+            100.kHz().try_into().unwrap(),
+            clocks,
+            &mut rcc.apb1,
+        );
+        let mut eeprom = Eeprom24x::new_24x08(i2c, SlaveAddr::Alternative(false, true, true));
+
         // Prepare other useful bits
         let status_led = gpioa
             .pa3
@@ -143,17 +203,21 @@ const APP: () = {
         let a_pin = gpioa
             .pa12
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
-        let mut b_pin = gpioa
+        let b_pin = gpioa
             .pa11
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
-        b_pin.make_interrupt_source(&mut syscfg);
-        b_pin.trigger_on_edge(&mut exti, Edge::RisingFalling);
-        b_pin.enable_interrupt(&mut exti);
 
-        // Create the 2048 board
-        let mut board = GameBoard::empty();
-        board.set_random();
-        board.set_random();
+        // Create/read the 2048 board
+        let should_restart = b_pin.is_low().unwrap();
+        let loaded_data = read_board_from_eeprom(&mut eeprom);
+        let board = match (should_restart, loaded_data) {
+            (false, Some(board)) => board,
+            _ => {
+                let board = GameBoard::new_game();
+                write_board_to_eeprom(&mut eeprom, &board);
+                board
+            }
+        };
 
         cx.spawn.update().unwrap();
 
@@ -168,6 +232,7 @@ const APP: () = {
             a_pin,
             b_pin,
             board_leds,
+            eeprom,
         }
     }
 
@@ -232,7 +297,7 @@ const APP: () = {
 
     #[task(
         priority = 2,
-        resources = [board, is_move_allowed],
+        resources = [board, eeprom, is_move_allowed],
         schedule = [allow_moves]
     )]
     fn make_move(cx: make_move::Context, direction: Direction) {
@@ -242,6 +307,7 @@ const APP: () = {
             cx.schedule
                 .allow_moves(cx.scheduled + MOVE_RATE_LIMIT.cycles())
                 .unwrap();
+            write_board_to_eeprom(cx.resources.eeprom, cx.resources.board)
         }
     }
 

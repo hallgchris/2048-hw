@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 
 use heapless::Vec;
+use postcard::{from_bytes, to_slice};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use smart_leds::{
@@ -11,6 +12,9 @@ use smart_leds::{
 use wyhash::WyRng;
 
 use crate::board::{Board, Coord, Direction, IntoBoard, SIZE};
+
+/// Size of the board serialized in bytes, rounded up to the next 16 bytes.
+pub const BYTES_SIZE: usize = 32;
 
 #[derive(Debug, PartialEq)]
 enum TileMoveResult {
@@ -41,7 +45,7 @@ impl<'de> Deserialize<'de> for MyRng {
 
 #[derive(Serialize, Deserialize)]
 pub struct GameBoard {
-    tiles: [u32; SIZE * SIZE],
+    tiles: [u8; SIZE * SIZE],
     rng: MyRng,
     score: u32,
 }
@@ -53,17 +57,24 @@ impl GameBoard {
     }
 
     /// Create a board entirely filled with some tile.
-    fn full_of(value: u32) -> GameBoard {
+    fn full_of(value: u8) -> GameBoard {
         GameBoard::with_tiles([value; SIZE * SIZE])
     }
 
     /// Create a board containing the specified tiles
-    pub fn with_tiles(tiles: [u32; SIZE * SIZE]) -> GameBoard {
+    pub fn with_tiles(tiles: [u8; SIZE * SIZE]) -> GameBoard {
         GameBoard {
             tiles,
             rng: MyRng(WyRng::default()),
             score: 0,
         }
+    }
+
+    pub fn new_game() -> GameBoard {
+        let mut board = GameBoard::empty();
+        board.set_random();
+        board.set_random();
+        board
     }
 
     /// Clears all tiles from the board.
@@ -73,7 +84,7 @@ impl GameBoard {
     }
 
     /// Get the maximum value of any tile on the board.
-    pub fn max_tile(&self) -> u32 {
+    pub fn max_tile(&self) -> u8 {
         *self
             .tiles
             .iter()
@@ -87,12 +98,12 @@ impl GameBoard {
     }
 
     /// Get the value of a tile on the board.
-    fn get_tile(&self, coord: Coord) -> u32 {
+    fn get_tile(&self, coord: Coord) -> u8 {
         self.tiles[coord.board_index()]
     }
 
     /// Set a tile on the board to some value.
-    fn set_tile(&mut self, coord: Coord, value: u32) {
+    fn set_tile(&mut self, coord: Coord, value: u8) {
         self.tiles[coord.board_index()] = value;
     }
 
@@ -153,7 +164,7 @@ impl GameBoard {
 
     /// Get the board tiles.
     /// FIXME: This is temporary, make some nice pretty print instead
-    pub fn get_board(&self) -> [u32; SIZE * SIZE] {
+    pub fn get_board(&self) -> [u8; SIZE * SIZE] {
         self.tiles
     }
 
@@ -222,7 +233,7 @@ impl GameBoard {
                     TileMoveResult::Merge(new_coord) => {
                         self.set_tile(new_coord, value + 1);
                         self.clear_tile(coord);
-                        self.score += u32::pow(2, value + 1);
+                        self.score += u32::pow(2, (value + 1).into());
                         moved = true;
                     }
                 }
@@ -230,6 +241,16 @@ impl GameBoard {
         }
 
         return moved;
+    }
+
+    pub fn to_bytes(&self) -> [u8; BYTES_SIZE] {
+        let mut bytes = [0; BYTES_SIZE];
+        to_slice(self, &mut bytes).unwrap();
+        bytes
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        from_bytes::<GameBoard>(&bytes).ok()
     }
 }
 
@@ -245,7 +266,7 @@ fn colour_with_hue(hue: u8) -> RGB8 {
 /// Map 2 to 1024 tiles to rainbow colours
 /// Map 2048 to 8192 tiles to decreasing shades of white
 /// Map tiles greater than 8192 to the same gray as 8192
-fn get_tile_colour(value: u32) -> RGB8 {
+fn get_tile_colour(value: u8) -> RGB8 {
     match value {
         0 => BLACK,              // Empty tile
         1 => colour_with_hue(0), // 2
@@ -521,7 +542,7 @@ mod tests {
     #[test]
     fn test_get_colour() {
         for i in 0..(SIZE * SIZE) {
-            get_tile_colour(i as u32);
+            get_tile_colour(i as u8);
         }
     }
 
@@ -544,5 +565,39 @@ mod tests {
 
         let board3 = GameBoard::empty();
         assert_ne!(board1, board3);
+    }
+
+    fn do_serialisation_test_on_board(board: &GameBoard) {
+        let bytes = board.to_bytes();
+        let parsed_board = GameBoard::from_bytes(&bytes).unwrap();
+        assert_eq!(*board, parsed_board);
+    }
+
+    #[test]
+    fn test_serialisation() {
+        let mut board = GameBoard::empty();
+        (1..10).for_each(|_| {
+            board.set_random();
+            do_serialisation_test_on_board(&board);
+        });
+
+        (1..5).for_each(|_| {
+            [
+                Direction::Up,
+                Direction::Right,
+                Direction::Down,
+                Direction::Left,
+            ]
+            .iter()
+            .for_each(|&direction| {
+                board.make_move(direction);
+                board.set_random();
+                do_serialisation_test_on_board(&board);
+            });
+        });
+
+        board.set_tile(Coord::new(2, 2).unwrap(), 15);
+        board.score = 1000000;
+        do_serialisation_test_on_board(&board);
     }
 }
