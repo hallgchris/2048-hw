@@ -2,7 +2,7 @@
 protocol = "Swd"
 
 [default.general]
-chip = "STM32F303K8"
+chip = "STM32F303K8Tx"
 
 [default.rtt]
 enabled = true

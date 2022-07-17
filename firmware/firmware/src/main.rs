@@ -1,54 +1,56 @@
 #![no_std]
 #![no_main]
 
-use core::convert::TryInto;
-
 use panic_halt as _;
 
-use cortex_m::interrupt;
-use rtic::cyccnt::U32Ext;
-use stm32f3::stm32f303::{Peripherals, EXTI, SPI1};
-use stm32f3xx_hal::{
-    gpio::{gpioa, gpiob, Alternate, Edge, Input, Output, PushPull},
-    prelude::*,
-    spi::Spi,
-};
-
-use smart_leds::{brightness, SmartLedsWrite};
-use ws2812_spi::Ws2812;
-
-use mmxlviii::{
-    board::{Direction, IntoBoard},
-    game_board::GameBoard,
-    score_board::ScoreBoard,
-};
-
-const SYSCLK_FREQ: u32 = 48_000_000; // Hz
-const UPDATE_PERIOD: u32 = SYSCLK_FREQ / 60; // Cycles
-const MOVE_RATE_LIMIT: u32 = SYSCLK_FREQ / 3; // Cycles
-const BRIGHTNESS: u8 = 31; // Out of 255
+// use rtic::cyccnt::U32Ext;
 
 #[rtic::app(
     device = stm32f3xx_hal::pac,
     peripherals = true,
-    monotonic = rtic::cyccnt::CYCCNT
+    // monotonic = rtic::cyccnt::CYCCNT
+    dispatchers = [USB_HP, USB_LP, USB_WKUP]
 )]
-const APP: () = {
-    struct Resources {
+mod app {
+    use cortex_m::interrupt;
+    use rtt_target::{rprintln, rtt_init_print};
+
+    use stm32f3xx_hal::{
+        gpio::{self, gpioa, gpiob, Alternate, Edge, Input, Output, PushPull, AF5},
+        pac::{EXTI, SPI1},
+        prelude::*,
+        spi::{MosiPin, Spi},
+    };
+
+    use systick_monotonic::{ExtU64, Systick};
+
+    use smart_leds::{brightness, SmartLedsWrite};
+    use ws2812_spi::Ws2812;
+
+    use mmxlviii::{
+        board::{Direction, IntoBoard},
+        game_board::GameBoard,
+        score_board::ScoreBoard,
+    };
+
+    const SYSCLK_FREQ: u32 = 48_000_000; // Hz
+    const UPDATE_PERIOD: u64 = 1000 / 60; // ms
+    const MOVE_RATE_LIMIT: u64 = 1000 / 3; // ms
+    const BRIGHTNESS: u8 = 31; // Out of 255
+
+    #[shared]
+    struct Shared {
         board: GameBoard,
 
+        #[lock_free]
         exti: EXTI,
 
+        is_move_allowed: bool,
+    }
+
+    #[local]
+    struct Local {
         status_led: gpioa::PA3<Output<PushPull>>,
-
-        up_pin: gpioa::PA8<Input>,
-        down_pin: gpioa::PA9<Input>,
-        left_pin: gpiob::PB1<Input>,
-        right_pin: gpiob::PB0<Input>,
-
-        a_pin: gpioa::PA12<Input>,
-        b_pin: gpioa::PA11<Input>,
-
         board_leds: Ws2812<
             Spi<
                 SPI1,
@@ -60,18 +62,27 @@ const APP: () = {
             >,
         >,
 
-        #[init(true)]
-        is_move_allowed: bool,
+        up_pin: gpioa::PA8<Input>,
+        down_pin: gpioa::PA9<Input>,
+        left_pin: gpiob::PB1<Input>,
+        right_pin: gpiob::PB0<Input>,
+
+        a_pin: gpioa::PA12<Input>,
+        b_pin: gpioa::PA11<Input>,
     }
 
-    #[init(spawn = [update])]
-    fn init(cx: init::Context) -> init::LateResources {
-        // Prepare our core and device peripherals
-        let cp: rtic::Peripherals = cx.core;
-        let dp: Peripherals = cx.device;
+    #[monotonic(binds = SysTick, default = true)]
+    type Tonic = Systick<1000>;
 
-        let mut dcb = cp.DCB;
-        let mut dwt = cp.DWT;
+    #[init]
+    fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
+        rtt_init_print!();
+        rprintln!("2048-hw v0.1.0");
+
+        // Prepare our core and device peripherals
+        let cp = cx.core;
+        let dp = cx.device;
+
         let mut flash = dp.FLASH.constrain();
         let mut rcc = dp.RCC.constrain();
         let mut syscfg = dp.SYSCFG.constrain(&mut rcc.apb2);
@@ -80,8 +91,7 @@ const APP: () = {
         let mut gpiob = dp.GPIOB.split(&mut rcc.ahb);
 
         // Initialise monotonic timer for periodic interrupts
-        dcb.enable_trace();
-        dwt.enable_cycle_counter();
+        let mono = Systick::new(cp.SYST, SYSCLK_FREQ);
 
         let clocks = rcc
             .cfgr
@@ -89,22 +99,22 @@ const APP: () = {
             .freeze(&mut flash.acr);
 
         // Set up SPI for WS2812b LEDs
-        let (sck, miso, mosi) = (
-            gpioa
-                .pa5
-                .into_af5_push_pull(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrl),
+        let sck = gpioa
+            .pa5
+            .into_af_push_pull(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrl);
+        let miso =
             gpioa
                 .pa6
-                .into_af5_push_pull(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrl),
+                .into_af_push_pull(&mut gpioa.moder, &mut gpioa.otyper, &mut gpioa.afrl);
+        let mosi =
             gpiob
                 .pb5
-                .into_af5_push_pull(&mut gpiob.moder, &mut gpiob.otyper, &mut gpiob.afrl),
-        );
-        let spi = Spi::spi1(
+                .into_af_push_pull(&mut gpiob.moder, &mut gpiob.otyper, &mut gpiob.afrl);
+        let spi = Spi::new(
             dp.SPI1,
             (sck, miso, mosi),
-            ws2812_spi::MODE,
-            3.MHz().try_into().unwrap(),
+            3.MHz(),
+            // ws2812_spi::MODE,
             clocks,
             &mut rcc.apb2,
         );
@@ -118,25 +128,25 @@ const APP: () = {
         let mut up_pin = gpioa
             .pa8
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
-        up_pin.make_interrupt_source(&mut syscfg);
+        syscfg.select_exti_interrupt_source(&up_pin);
         up_pin.trigger_on_edge(&mut exti, Edge::Rising);
         up_pin.enable_interrupt(&mut exti);
         let mut down_pin = gpioa
             .pa9
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
-        down_pin.make_interrupt_source(&mut syscfg);
+        syscfg.select_exti_interrupt_source(&down_pin);
         down_pin.trigger_on_edge(&mut exti, Edge::Rising);
         down_pin.enable_interrupt(&mut exti);
         let mut left_pin = gpiob
             .pb1
             .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr);
-        left_pin.make_interrupt_source(&mut syscfg);
+        syscfg.select_exti_interrupt_source(&left_pin);
         left_pin.trigger_on_edge(&mut exti, Edge::Rising);
         left_pin.enable_interrupt(&mut exti);
         let mut right_pin = gpiob
             .pb0
             .into_pull_up_input(&mut gpiob.moder, &mut gpiob.pupdr);
-        right_pin.make_interrupt_source(&mut syscfg);
+        syscfg.select_exti_interrupt_source(&right_pin);
         right_pin.trigger_on_edge(&mut exti, Edge::Rising);
         right_pin.enable_interrupt(&mut exti);
 
@@ -146,7 +156,7 @@ const APP: () = {
         let mut b_pin = gpioa
             .pa11
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
-        b_pin.make_interrupt_source(&mut syscfg);
+        syscfg.select_exti_interrupt_source(&b_pin);
         b_pin.trigger_on_edge(&mut exti, Edge::RisingFalling);
         b_pin.enable_interrupt(&mut exti);
 
@@ -155,110 +165,119 @@ const APP: () = {
         board.set_random();
         board.set_random();
 
-        cx.spawn.update().unwrap();
+        update::spawn().unwrap();
 
-        init::LateResources {
+        let shared = Shared {
             board,
             exti,
+            is_move_allowed: true,
+        };
+        let local = Local {
             status_led,
+            board_leds,
             up_pin,
             down_pin,
             left_pin,
             right_pin,
             a_pin,
             b_pin,
-            board_leds,
-        }
+        };
+
+        (shared, local, init::Monotonics(mono))
     }
 
     #[task(
         priority = 3,
         binds = EXTI0,
-        resources = [exti, right_pin],
-        spawn = [make_move]
+        shared = [exti],
+        local = [right_pin]
     )]
     fn exti0(cx: exti0::Context) {
-        let pr = cx.resources.exti.pr1.read();
+        let pr = cx.shared.exti.pr1.read();
         if pr.pr0().is_pending() {
-            cx.resources.right_pin.clear_interrupt_pending_bit();
-            let _ = cx.spawn.make_move(Direction::Right);
+            cx.local.right_pin.clear_interrupt();
+            let _ = make_move::spawn(Direction::Right);
         }
     }
 
     #[task(
         priority = 3,
         binds = EXTI1,
-        resources = [exti, left_pin],
-        spawn = [make_move]
+        shared = [exti],
+        local=[left_pin]
     )]
     fn exti1(cx: exti1::Context) {
-        let pr = cx.resources.exti.pr1.read();
+        let pr = cx.shared.exti.pr1.read();
         if pr.pr1().is_pending() {
-            cx.resources.left_pin.clear_interrupt_pending_bit();
-            let _ = cx.spawn.make_move(Direction::Left);
+            cx.local.left_pin.clear_interrupt();
+            let _ = make_move::spawn(Direction::Left);
         }
     }
 
     #[task(
         priority = 3,
         binds = EXTI9_5,
-        resources = [exti, down_pin, up_pin],
-        spawn = [make_move]
+        shared = [exti],
+        local = [ down_pin, up_pin]
     )]
     fn exti9_5(cx: exti9_5::Context) {
-        let pr = cx.resources.exti.pr1.read();
+        let pr = cx.shared.exti.pr1.read();
         if pr.pr9().is_pending() {
-            cx.resources.down_pin.clear_interrupt_pending_bit();
-            let _ = cx.spawn.make_move(Direction::Down);
+            cx.local.down_pin.clear_interrupt();
+            let _ = make_move::spawn(Direction::Down);
         } else if pr.pr8().is_pending() {
-            cx.resources.up_pin.clear_interrupt_pending_bit();
-            let _ = cx.spawn.make_move(Direction::Up);
+            cx.local.up_pin.clear_interrupt();
+            let _ = make_move::spawn(Direction::Up);
         }
     }
 
     #[task(
         priority = 3,
         binds = EXTI15_10,
-        resources = [exti, b_pin, status_led],
-        spawn = [make_move]
+        shared = [exti ],
+        local = [b_pin, status_led]
     )]
     fn exti15_10(cx: exti15_10::Context) {
-        let pr = cx.resources.exti.pr1.read();
+        let pr = cx.shared.exti.pr1.read();
         if pr.pr11().is_pending() {
-            cx.resources.b_pin.clear_interrupt_pending_bit();
-            cx.resources.status_led.toggle().unwrap();
+            cx.local.b_pin.clear_interrupt();
+            cx.local.status_led.toggle().unwrap();
         }
     }
 
     #[task(
         priority = 2,
-        resources = [board, is_move_allowed],
-        schedule = [allow_moves]
+        shared = [board, is_move_allowed],
     )]
     fn make_move(cx: make_move::Context, direction: Direction) {
-        if *cx.resources.is_move_allowed && cx.resources.board.make_move(direction) {
-            cx.resources.board.set_random();
-            *cx.resources.is_move_allowed = false;
-            cx.schedule
-                .allow_moves(cx.scheduled + MOVE_RATE_LIMIT.cycles())
-                .unwrap();
-        }
+        let board = cx.shared.board;
+        let is_move_allowed = cx.shared.is_move_allowed;
+
+        (board, is_move_allowed).lock(|board, is_move_allowed| {
+            if *is_move_allowed && board.make_move(direction) {
+                board.set_random();
+                *is_move_allowed = false;
+                allow_moves::spawn_after(MOVE_RATE_LIMIT.millis()).unwrap();
+            }
+        })
     }
 
-    #[task(priority = 2, resources = [is_move_allowed])]
-    fn allow_moves(cx: allow_moves::Context) {
-        *cx.resources.is_move_allowed = true;
+    #[task(priority = 2, shared = [is_move_allowed])]
+    fn allow_moves(mut cx: allow_moves::Context) {
+        cx.shared
+            .is_move_allowed
+            .lock(|is_move_allowed| *is_move_allowed = true);
     }
 
     #[task(
         priority = 1,
-        resources = [board, a_pin, board_leds],
-        schedule = [update]
+        shared = [board],
+        local = [a_pin, board_leds]
     )]
     fn update(mut cx: update::Context) {
-        let show_score = cx.resources.a_pin.is_low();
+        let show_score = cx.local.a_pin.is_low();
 
-        let leds = cx.resources.board.lock(|board| match show_score {
+        let leds = cx.shared.board.lock(|board| match show_score {
             Ok(true) => ScoreBoard::from_score(board.get_score()).into_board(),
             Ok(false) | Err(_) => board.into_board(),
         });
@@ -267,20 +286,12 @@ const APP: () = {
         // If this were to occur, the LEDs would display incorrect data
         // manifesting as a momentary flicker.
         interrupt::free(|_| {
-            cx.resources
+            cx.local
                 .board_leds
                 .write(brightness(leds.into_iter().cloned(), BRIGHTNESS))
                 .unwrap()
         });
 
-        cx.schedule
-            .update(cx.scheduled + UPDATE_PERIOD.cycles())
-            .unwrap();
+        update::spawn_after(UPDATE_PERIOD.millis()).unwrap();
     }
-
-    extern "C" {
-        fn USB_WKUP();
-        fn USB_LP();
-        fn USB_HP();
-    }
-};
+}
