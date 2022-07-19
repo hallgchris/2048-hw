@@ -207,6 +207,10 @@ const APP: () = {
             .pa11
             .into_pull_up_input(&mut gpioa.moder, &mut gpioa.pupdr);
 
+        // TODO: Tidy when crates are up to date
+        // Give the pull-ups time to stabilise. At 48 MHz, this takes ~5ms
+        cortex_m::asm::delay(240000);
+
         // Create/read the 2048 board
         let should_restart = b_pin.is_low().unwrap();
         let loaded_data = read_board_from_eeprom(&mut eeprom);
